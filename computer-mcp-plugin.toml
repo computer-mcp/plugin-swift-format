@@ -1,0 +1,16 @@
+id = 'swift-format'
+name = 'Swift Format'
+version = '1.0.0'
+description = 'Swift source formatting and linting through a verified native command-tree export.'
+
+[[dependencies]]
+id = 'formatter'
+commands = ['swift-format']
+instructions = 'Use the swift-format supplied with Swift 6.3.1 and bind that actual executable in host plugin settings. Each authorized call checks its version and native interface against the verified baseline. A mismatch requires a compatible binding or a reviewed plugin update. This package does not install Swift or change PATH.'
+documentation = 'https://github.com/swiftlang/swift-format'
+
+[[cli]]
+id = 'format'
+executable = { dependency = 'formatter' }
+description = 'Format or lint Swift source using the native Swift Format command tree.'
+tree = { kind = 'file', path = 'cli-tree.json' }

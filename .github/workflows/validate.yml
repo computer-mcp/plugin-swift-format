@@ -1,0 +1,39 @@
+name: Validate and package
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Validate exporter and declaration package
+        run: |
+          /usr/bin/swift --version
+          /usr/bin/swift package resolve
+          git diff --exit-code -- Package.resolved
+          /usr/bin/swift format lint --strict --recursive --configuration .swift-format Package.swift Sources Tests
+          /usr/bin/swift test --disable-automatic-resolution
+          /usr/bin/swift build -c release --disable-automatic-resolution
+          python3 -m unittest discover -s Tests -p 'test_*.py'
+          python3 Scripts/build_package.py dist > package-receipt.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: swift-format-plugin-${{ github.sha }}
+          path: |
+            dist/swift-format.zip
+            package-receipt.json
+          if-no-files-found: error
+          retention-days: 14
