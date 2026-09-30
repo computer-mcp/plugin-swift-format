@@ -21,6 +21,7 @@ jobs:
           python-version: '3.13'
       - name: Validate exporter and declaration package
         run: |
+          python3 Scripts/check-brand.py
           /usr/bin/swift --version
           /usr/bin/swift package resolve
           git diff --exit-code -- Package.resolved
