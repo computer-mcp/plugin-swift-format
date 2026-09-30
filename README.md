@@ -1,4 +1,9 @@
-# Swift Format Plugin
+![Computer MCP — Swift Format](Documentation/Brand/header.svg)
+
+# Computer MCP — Swift Format
+
+Part of the [Computer MCP](https://computer-mcp.github.io/) family.
+**Let ChatGPT use your local tools.**
 
 A Computer MCP plugin for the Swift Format supplied with Swift 6.3.1. It exposes
 formatting, linting, configuration output, and help through the Gateway's typed

@@ -147,3 +147,11 @@ source of truth instead of a literal value.
 ## Repository Guardrails
 
 Read Package.swift and computer-mcp-plugin.toml before editing. Keep the exporter separate from the vendor formatter. Generate cli-tree.json from verified native input; preserve upstream notices and never hand-edit generated output. Run swift build, swift test and swift-format lint before handoff. Do not install vendor binaries or change global PATH.
+
+## Brand delivery
+
+The main Computer MCP repository owns ProductIdentity and BRAND. Imported
+`Documentation/Brand/header.svg` travels with the packaged manual;
+`.github/brand/social.png` supplies the repository preview. `brand.lock.json`
+binds both to canonical exports. Run `python3 Scripts/check-brand.py` locally
+and in CI. Update imports with the main repository's `Scripts/brand.py sync`.

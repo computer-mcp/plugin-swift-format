@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source": "https://github.com/computer-mcp/computer-mcp",
+  "revision": "3c498108b1b847ae126fd2593cd0d3ddb4d0d9858d0dae214b1439ff69226e50",
+  "consumer": "plugin-swift-format",
+  "name": "Computer MCP",
+  "promise": {
+    "en": "Let ChatGPT use your local tools.",
+    "zh-CN": "\u8ba9 ChatGPT\uff0c\u7528\u4e0a\u4f60\u7684\u672c\u673a\u5de5\u5177\u3002"
+  },
+  "files": {
+    "Documentation/Brand/header.svg": "f9685cf010a4d26c959e03dc0d13782700eaf0930bc8967ba3df8e4866c57ca0",
+    ".github/brand/social.png": "218af71a6d56373f7bfe84ec0c401f9f0914a510bd23241643879be55c088dc9",
+    "Scripts/check-brand.py": "2ec3c64469774b48fbfa6fbfa7f6a35c6a172fe4de347beb1881766632fbfdde"
+  }
+}
