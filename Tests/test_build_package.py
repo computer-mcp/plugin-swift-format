@@ -57,6 +57,18 @@ class PackageTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     BUILDER.package_bytes(root)
 
+    def test_skips_hidden_files_and_python_caches(self):
+        expected, _ = BUILDER.package_bytes(ROOT)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "source"
+            shutil.copytree(ROOT, root, ignore=shutil.ignore_patterns(".git", ".build", "__pycache__"))
+            (root / "Documentation" / ".DS_Store").write_bytes(b"finder")
+            (root / "ThirdPartyNotices" / "__pycache__").mkdir()
+            (root / "ThirdPartyNotices" / "__pycache__" / "cached.pyc").write_bytes(b"cache")
+            (root / "Documentation" / "stale.pyc").write_bytes(b"cache")
+            actual, _ = BUILDER.package_bytes(root)
+        self.assertEqual(actual, expected)
+
     def test_requires_license_and_notices(self):
         for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:

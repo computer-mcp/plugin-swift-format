@@ -14,3 +14,6 @@ id = 'format'
 executable = { dependency = 'formatter' }
 description = 'Format or lint Swift source using the native Swift Format command tree.'
 tree = { kind = 'file', path = 'cli-tree.json' }
+
+[compatibility]
+minimum_host = '1.1.0'

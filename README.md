@@ -62,8 +62,9 @@ inputs produce identical bytes. An existing different artifact is preserved
 and causes an error. Install the ZIP through the host's plugin management UI or
 CLI, reviewing the dependency binding and grants independently.
 
-`.github/workflows/validate.yml` validates the exporter and package on pull
-requests, pushes and manual runs. Its downloadable workflow artifacts are
+`.github/workflows/ci.yml` validates the exporter and package on pull
+requests, `master` pushes and manual runs, and repeats the package tests and
+build on Python 3.11. Its downloadable workflow artifacts are
 validation outputs, not a public plugin release or publisher verification.
 
 ## Regenerate and test
