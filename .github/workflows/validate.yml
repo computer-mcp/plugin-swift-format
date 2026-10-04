@@ -21,7 +21,6 @@ jobs:
           python-version: '3.13'
       - name: Validate exporter and declaration package
         run: |
-          python3 Scripts/check-brand.py
           /usr/bin/swift --version
           /usr/bin/swift package resolve
           git diff --exit-code -- Package.resolved
@@ -38,3 +37,5 @@ jobs:
             package-receipt.json
           if-no-files-found: error
           retention-days: 14
+  brand:
+    uses: computer-mcp/.github/.github/workflows/brand-check.yml@9b58c7b9823a808273c8a60d4676c6555b2bcaad # master
