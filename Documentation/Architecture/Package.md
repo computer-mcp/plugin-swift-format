@@ -12,8 +12,8 @@ is not part of invocation-time formatting.
 ## Dependencies
 
 swift-argument-parser 1.8.2 owns named-option parsing, validation and generated
-help for the exporter. It removes fixed-position argument handling while the
-export use case retains bounded stdin, atomic writes and JSON failures on stderr.
+help for the exporter. The export use case owns bounded stdin, atomic writes and
+JSON failures on stderr.
 Foundation and CryptoKit supply data and digest operations. The vendor formatter
 is a separately resolved host dependency, never bundled or installed here.
 

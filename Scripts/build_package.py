@@ -27,6 +27,9 @@ def package_bytes(root):
         if stat.S_ISDIR(mode):
             with os.scandir(path) as children:
                 for child in children:
+                    if (child.name.startswith(".") or child.name == "__pycache__"
+                            or child.name.endswith((".pyc", ".pyo"))):
+                        continue
                     if count + len(pending) >= 512:
                         raise ValueError("Package contains too many entries")
                     pending.append(Path(child.path))
