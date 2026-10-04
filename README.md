@@ -96,6 +96,6 @@ See the [documentation index](Documentation/README.md) and
 ## License
 
 Computer MCP-owned code and resources use the
-[Computer MCP Source-Visible License 1.0](LICENSE). Source visibility is not an
-open-source license. [Third-party notices](THIRD_PARTY_NOTICES.md) identify the
+[Functional Source License 1.1, Apache 2.0 Future License](LICENSE)
+(FSL-1.1-ALv2). [Third-party notices](THIRD_PARTY_NOTICES.md) identify the
 separate rights covering upstream descriptions and dependencies.
