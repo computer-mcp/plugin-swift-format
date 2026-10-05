@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
   "authority": "https://github.com/computer-mcp/.github",
-  "revision": "9042c987ef8b3482f63e3a037ae0d0d2fdeffb9a7768c03295c9a6a6c5a43ae2",
+  "revision": "2d9913a442afcb22faca90f5272d3988eb961be6e858b71c5067303cf7c627d6",
   "consumer": "plugin-swift-format",
   "files": {
-    "Documentation/Brand/header-light.png": "089dc399a4c82f97cc3a084f9d1f5b42cc68f853abb925ad914357aadc1cb46e",
-    "Documentation/Brand/header-dark.png": "74aaa016e143429649fde342ce0bbbb3421dff8fb3ec94b26d435812b893bf00",
-    ".github/brand/social.png": "78e865927db09872f89cfb85c3a67fe40e46cf6f5668feca686e923d664a55a6"
+    "Documentation/Brand/header-light.png": "df3dc66b262d521640b2e11f8ee85d210e53a7f823136f65a7e197be288e5d4a",
+    "Documentation/Brand/header-dark.png": "ab670577f37e1e2eacef7b5d9973b51ebe536dbd585f3aa6dd380e3c6eb36129",
+    ".github/brand/social.png": "0670f9bc4c04ed705b45190654cefd04a43d986d4821ea4def1c472546694665"
   },
   "entries": {
     "README.md": [
