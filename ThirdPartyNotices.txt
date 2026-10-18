@@ -1,0 +1,3 @@
+Third-party component ownership and distribution scope are documented in
+THIRD_PARTY_NOTICES.md and NOTICE.md, included in this archive. The Swift Format
+license is included at ThirdPartyNotices/SwiftFormat-LICENSE.txt.

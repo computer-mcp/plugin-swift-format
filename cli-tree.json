@@ -1,0 +1,939 @@
+{
+  "commands" : [
+    {
+      "argv" : [
+        {
+          "flag" : "--version",
+          "kind" : "flag",
+          "parameter" : "version"
+        },
+        {
+          "flag" : "--help",
+          "kind" : "flag",
+          "parameter" : "help"
+        },
+        {
+          "flag" : "--in-place",
+          "kind" : "flag",
+          "parameter" : "in_place"
+        },
+        {
+          "flag" : "--configuration",
+          "kind" : "option",
+          "parameter" : "configuration",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--offsets",
+          "kind" : "option",
+          "parameter" : "offsets",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--assume-filename",
+          "kind" : "option",
+          "parameter" : "assume_filename",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--recursive",
+          "kind" : "flag",
+          "parameter" : "recursive"
+        },
+        {
+          "flag" : "--ignore-unparsable-files",
+          "kind" : "flag",
+          "parameter" : "ignore_unparsable_files"
+        },
+        {
+          "flag" : "--parallel",
+          "kind" : "flag",
+          "parameter" : "parallel"
+        },
+        {
+          "flag" : "--color-diagnostics",
+          "inverse" : "--no-color-diagnostics",
+          "kind" : "flag",
+          "parameter" : "color_diagnostics"
+        },
+        {
+          "flag" : "--follow-symlinks",
+          "kind" : "flag",
+          "parameter" : "follow_symlinks"
+        },
+        {
+          "flag" : "--enable-experimental-feature",
+          "kind" : "option",
+          "parameter" : "enable_experimental_feature",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--debug-disable-pretty-print",
+          "kind" : "flag",
+          "parameter" : "debug_disable_pretty_print"
+        },
+        {
+          "flag" : "--debug-dump-token-stream",
+          "kind" : "flag",
+          "parameter" : "debug_dump_token_stream"
+        },
+        {
+          "flag" : "--measure-instructions",
+          "kind" : "flag",
+          "parameter" : "measure_instructions"
+        },
+        {
+          "kind" : "literal",
+          "value" : "--"
+        },
+        {
+          "kind" : "positional",
+          "parameter" : "paths"
+        }
+      ],
+      "description" : "Format or lint Swift source code",
+      "executable" : true,
+      "help_argv" : [
+        "--help"
+      ],
+      "id" : "root",
+      "parameters" : [
+        {
+          "default" : false,
+          "description" : "Print the version and exit",
+          "name" : "version",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Show help information.",
+          "name" : "help",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Overwrite the current file when formatting.",
+          "name" : "in_place",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "The path to a JSON file containing the configuration of the linter/formatter or a JSON string containing the configuration directly.",
+          "name" : "configuration",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "A \"start:end\" pair specifying UTF-8 offsets of the range to format. Multiple ranges can be\nformatted by specifying several --offsets arguments.",
+          "name" : "offsets",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "description" : "When using standard input, the filename of the source to include in diagnostics.",
+          "name" : "assume_filename",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Recursively run on '.swift' files in any provided directories.",
+          "name" : "recursive",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Ignores unparsable files, disabling all diagnostics and formatting for files that contain invalid syntax.",
+          "name" : "ignore_unparsable_files",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Process files in parallel, simultaneously across multiple cores.",
+          "name" : "parallel",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "Enables or disables color diagnostics when printing to standard error. The default behavior if this flag is omitted is to use colors if standard error is connected to a terminal, and to not use colors otherwise.",
+          "name" : "color_diagnostics",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Follow symbolic links passed on the command line, or found during directory traversal when using `-r/--recursive`.",
+          "name" : "follow_symlinks",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "The name of an experimental swift-syntax parser feature that should be enabled by swift-format. Multiple features can be enabled by specifying this flag multiple times.",
+          "name" : "enable_experimental_feature",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "Zero or more input filenames. Use `-` for stdin.",
+          "name" : "paths",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_disable_pretty_print",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_dump_token_stream",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Measure number of instructions executed by swift-format",
+          "name" : "measure_instructions",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "UTF-8 Swift source on stdin. Omit paths or use paths [\"-\"] to read stdin. Omission closes input without bytes.",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }
+      ],
+      "path" : [
+
+      ],
+      "stdin" : {
+        "encoding" : "utf8",
+        "parameter" : "source"
+      },
+      "stdout" : "text"
+    },
+    {
+      "argv" : [
+        {
+          "kind" : "literal",
+          "value" : "dump-configuration"
+        },
+        {
+          "flag" : "--effective",
+          "kind" : "flag",
+          "parameter" : "effective"
+        },
+        {
+          "flag" : "--configuration",
+          "kind" : "option",
+          "parameter" : "configuration",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--help",
+          "kind" : "flag",
+          "parameter" : "help"
+        }
+      ],
+      "description" : "Dump the configuration in JSON format to standard output\nWithout any options, dumps the default configuration. When '--effective' is set, dumps the configuration that would be used if swift-format was executed from the current working directory (cwd), incorporating configuration files found in the cwd or its parents, or input from the '--configuration' option.",
+      "executable" : true,
+      "help_argv" : [
+        "dump-configuration",
+        "--help"
+      ],
+      "id" : "dump_configuration",
+      "parameters" : [
+        {
+          "default" : false,
+          "description" : "Dump the effective instead of the default configuration.",
+          "name" : "effective",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "The path to a JSON file containing the configuration of the linter/formatter or a JSON string containing the configuration directly.",
+          "name" : "configuration",
+          "required" : false,
+          "requires" : [
+            "effective"
+          ],
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Show help information.",
+          "name" : "help",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }
+      ],
+      "path" : [
+        "dump-configuration"
+      ],
+      "stdout" : "text"
+    },
+    {
+      "argv" : [
+        {
+          "kind" : "literal",
+          "value" : "format"
+        },
+        {
+          "flag" : "--in-place",
+          "kind" : "flag",
+          "parameter" : "in_place"
+        },
+        {
+          "flag" : "--configuration",
+          "kind" : "option",
+          "parameter" : "configuration",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--offsets",
+          "kind" : "option",
+          "parameter" : "offsets",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--assume-filename",
+          "kind" : "option",
+          "parameter" : "assume_filename",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--recursive",
+          "kind" : "flag",
+          "parameter" : "recursive"
+        },
+        {
+          "flag" : "--ignore-unparsable-files",
+          "kind" : "flag",
+          "parameter" : "ignore_unparsable_files"
+        },
+        {
+          "flag" : "--parallel",
+          "kind" : "flag",
+          "parameter" : "parallel"
+        },
+        {
+          "flag" : "--color-diagnostics",
+          "inverse" : "--no-color-diagnostics",
+          "kind" : "flag",
+          "parameter" : "color_diagnostics"
+        },
+        {
+          "flag" : "--follow-symlinks",
+          "kind" : "flag",
+          "parameter" : "follow_symlinks"
+        },
+        {
+          "flag" : "--enable-experimental-feature",
+          "kind" : "option",
+          "parameter" : "enable_experimental_feature",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--debug-disable-pretty-print",
+          "kind" : "flag",
+          "parameter" : "debug_disable_pretty_print"
+        },
+        {
+          "flag" : "--debug-dump-token-stream",
+          "kind" : "flag",
+          "parameter" : "debug_dump_token_stream"
+        },
+        {
+          "flag" : "--measure-instructions",
+          "kind" : "flag",
+          "parameter" : "measure_instructions"
+        },
+        {
+          "flag" : "--help",
+          "kind" : "flag",
+          "parameter" : "help"
+        },
+        {
+          "kind" : "literal",
+          "value" : "--"
+        },
+        {
+          "kind" : "positional",
+          "parameter" : "paths"
+        }
+      ],
+      "description" : "Format Swift source code\nWhen no files are specified, it expects the source from standard input.",
+      "executable" : true,
+      "help_argv" : [
+        "format",
+        "--help"
+      ],
+      "id" : "format",
+      "parameters" : [
+        {
+          "default" : false,
+          "description" : "Overwrite the current file when formatting.",
+          "name" : "in_place",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "The path to a JSON file containing the configuration of the linter/formatter or a JSON string containing the configuration directly.",
+          "name" : "configuration",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "A \"start:end\" pair specifying UTF-8 offsets of the range to format. Multiple ranges can be\nformatted by specifying several --offsets arguments.",
+          "name" : "offsets",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "description" : "When using standard input, the filename of the source to include in diagnostics.",
+          "name" : "assume_filename",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Recursively run on '.swift' files in any provided directories.",
+          "name" : "recursive",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Ignores unparsable files, disabling all diagnostics and formatting for files that contain invalid syntax.",
+          "name" : "ignore_unparsable_files",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Process files in parallel, simultaneously across multiple cores.",
+          "name" : "parallel",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "Enables or disables color diagnostics when printing to standard error. The default behavior if this flag is omitted is to use colors if standard error is connected to a terminal, and to not use colors otherwise.",
+          "name" : "color_diagnostics",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Follow symbolic links passed on the command line, or found during directory traversal when using `-r/--recursive`.",
+          "name" : "follow_symlinks",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "The name of an experimental swift-syntax parser feature that should be enabled by swift-format. Multiple features can be enabled by specifying this flag multiple times.",
+          "name" : "enable_experimental_feature",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "Zero or more input filenames. Use `-` for stdin.",
+          "name" : "paths",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_disable_pretty_print",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_dump_token_stream",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Measure number of instructions executed by swift-format",
+          "name" : "measure_instructions",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Show help information.",
+          "name" : "help",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "UTF-8 Swift source on stdin. Omit paths or use paths [\"-\"] to read stdin. Omission closes input without bytes.",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }
+      ],
+      "path" : [
+        "format"
+      ],
+      "stdin" : {
+        "encoding" : "utf8",
+        "parameter" : "source"
+      },
+      "stdout" : "text"
+    },
+    {
+      "argv" : [
+        {
+          "kind" : "literal",
+          "value" : "lint"
+        },
+        {
+          "flag" : "--configuration",
+          "kind" : "option",
+          "parameter" : "configuration",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--offsets",
+          "kind" : "option",
+          "parameter" : "offsets",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--assume-filename",
+          "kind" : "option",
+          "parameter" : "assume_filename",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--recursive",
+          "kind" : "flag",
+          "parameter" : "recursive"
+        },
+        {
+          "flag" : "--ignore-unparsable-files",
+          "kind" : "flag",
+          "parameter" : "ignore_unparsable_files"
+        },
+        {
+          "flag" : "--parallel",
+          "kind" : "flag",
+          "parameter" : "parallel"
+        },
+        {
+          "flag" : "--color-diagnostics",
+          "inverse" : "--no-color-diagnostics",
+          "kind" : "flag",
+          "parameter" : "color_diagnostics"
+        },
+        {
+          "flag" : "--follow-symlinks",
+          "kind" : "flag",
+          "parameter" : "follow_symlinks"
+        },
+        {
+          "flag" : "--enable-experimental-feature",
+          "kind" : "option",
+          "parameter" : "enable_experimental_feature",
+          "style" : "equals"
+        },
+        {
+          "flag" : "--debug-disable-pretty-print",
+          "kind" : "flag",
+          "parameter" : "debug_disable_pretty_print"
+        },
+        {
+          "flag" : "--debug-dump-token-stream",
+          "kind" : "flag",
+          "parameter" : "debug_dump_token_stream"
+        },
+        {
+          "flag" : "--strict",
+          "kind" : "flag",
+          "parameter" : "strict"
+        },
+        {
+          "flag" : "--measure-instructions",
+          "kind" : "flag",
+          "parameter" : "measure_instructions"
+        },
+        {
+          "flag" : "--help",
+          "kind" : "flag",
+          "parameter" : "help"
+        },
+        {
+          "kind" : "literal",
+          "value" : "--"
+        },
+        {
+          "kind" : "positional",
+          "parameter" : "paths"
+        }
+      ],
+      "description" : "Diagnose style issues in Swift source code\nWhen no files are specified, it expects the source from standard input.",
+      "executable" : true,
+      "help_argv" : [
+        "lint",
+        "--help"
+      ],
+      "id" : "lint",
+      "parameters" : [
+        {
+          "description" : "The path to a JSON file containing the configuration of the linter/formatter or a JSON string containing the configuration directly.",
+          "name" : "configuration",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "A \"start:end\" pair specifying UTF-8 offsets of the range to format. Multiple ranges can be\nformatted by specifying several --offsets arguments.",
+          "name" : "offsets",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "description" : "When using standard input, the filename of the source to include in diagnostics.",
+          "name" : "assume_filename",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Recursively run on '.swift' files in any provided directories.",
+          "name" : "recursive",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Ignores unparsable files, disabling all diagnostics and formatting for files that contain invalid syntax.",
+          "name" : "ignore_unparsable_files",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Process files in parallel, simultaneously across multiple cores.",
+          "name" : "parallel",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "Enables or disables color diagnostics when printing to standard error. The default behavior if this flag is omitted is to use colors if standard error is connected to a terminal, and to not use colors otherwise.",
+          "name" : "color_diagnostics",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Follow symbolic links passed on the command line, or found during directory traversal when using `-r/--recursive`.",
+          "name" : "follow_symlinks",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "The name of an experimental swift-syntax parser feature that should be enabled by swift-format. Multiple features can be enabled by specifying this flag multiple times.",
+          "name" : "enable_experimental_feature",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : [
+
+          ],
+          "description" : "Zero or more input filenames. Use `-` for stdin.",
+          "name" : "paths",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_disable_pretty_print",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "debug_dump_token_stream",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Treat all findings as errors instead of warnings.",
+          "name" : "strict",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Measure number of instructions executed by swift-format",
+          "name" : "measure_instructions",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "default" : false,
+          "description" : "Show help information.",
+          "name" : "help",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        },
+        {
+          "description" : "UTF-8 Swift source on stdin. Omit paths or use paths [\"-\"] to read stdin. Omission closes input without bytes.",
+          "name" : "source",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }
+      ],
+      "path" : [
+        "lint"
+      ],
+      "stdin" : {
+        "encoding" : "utf8",
+        "parameter" : "source"
+      },
+      "stdout" : "text"
+    },
+    {
+      "argv" : [
+        {
+          "kind" : "literal",
+          "value" : "help"
+        },
+        {
+          "flag" : "--help",
+          "kind" : "flag",
+          "parameter" : "help"
+        },
+        {
+          "kind" : "literal",
+          "value" : "--"
+        },
+        {
+          "kind" : "positional",
+          "parameter" : "subcommands"
+        }
+      ],
+      "description" : "Show subcommand help information.",
+      "executable" : true,
+      "help_argv" : [
+        "help",
+        "--help"
+      ],
+      "id" : "help",
+      "parameters" : [
+        {
+          "default" : [
+
+          ],
+          "name" : "subcommands",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        {
+          "default" : false,
+          "name" : "help",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }
+      ],
+      "path" : [
+        "help"
+      ],
+      "stdout" : "text"
+    }
+  ],
+  "coverage" : "partial",
+  "executable_checks" : [
+    {
+      "args" : [
+        "--version"
+      ],
+      "stdout" : "6.3.1\n"
+    },
+    {
+      "args" : [
+        "--experimental-dump-help"
+      ],
+      "stdout_sha256" : "afce7a2f8c5b0825b90ce7061c6508eb5545b07b1414ed853c23a0fb6ab8c14e"
+    }
+  ],
+  "executable_version" : "6.3.1",
+  "format_version" : 1,
+  "omissions" : [
+    "Every node and argument in the pinned native export is mapped. ArgumentParser's experimental introspection/completion control flags are not exposed as formatting tools.",
+    "Equivalent short aliases and repeated scalar flag spellings are normalized to one canonical input. Upstream value-dependent validation (offset ranges, stdin/path combinations and configuration) remains in swift-format."
+  ],
+  "source" : "swiftlang/swift-format swift-6.3.1-RELEASE; native --experimental-dump-help sha256:afce7a2f8c5b0825b90ce7061c6508eb5545b07b1414ed853c23a0fb6ab8c14e"
+}
