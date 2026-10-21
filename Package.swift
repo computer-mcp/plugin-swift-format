@@ -7,7 +7,7 @@ let package = Package(
   platforms: [.macOS(.v14)],
   products: [.executable(name: "export-swift-format-tree", targets: ["ExportSwiftFormatTree"])],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser", exact: "1.8.2")
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.8.2")
   ],
   targets: [
     .executableTarget(

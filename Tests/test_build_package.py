@@ -20,7 +20,11 @@ class PackageTests(unittest.TestCase):
         first, manifest = BUILDER.package_bytes(ROOT)
         self.assertEqual(first, BUILDER.package_bytes(ROOT)[0])
         self.assertEqual(manifest["id"], "swift-format")
+        self.assertIs(type(manifest["plugin_api"]), int)
+        self.assertEqual(manifest["plugin_api"], 1)
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
+            self.assertEqual(archive.read("computer-mcp-plugin.toml"),
+                             (ROOT / "computer-mcp-plugin.toml").read_bytes())
             self.assertIn("cli-tree.json", archive.namelist())
             self.assertIn("ThirdPartyNotices/SwiftFormat-LICENSE.txt", archive.namelist())
             for name in ("LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
