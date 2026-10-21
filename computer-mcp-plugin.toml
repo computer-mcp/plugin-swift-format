@@ -1,6 +1,7 @@
 id = 'swift-format'
 name = 'Swift Format'
 version = '0.1.0'
+plugin_api = 1
 description = 'Swift source formatting and linting through a verified native command-tree export.'
 
 [[dependencies]]
