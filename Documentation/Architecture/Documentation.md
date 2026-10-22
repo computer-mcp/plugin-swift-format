@@ -6,9 +6,10 @@ CONTRIBUTING.md describes contributor checks. Current package facts belong in
 Documentation/Architecture/Package.md; commands, formats and operating detail
 belong in Documentation/Reference/.
 
-Version and release rules belong in
-Documentation/Architecture/VersioningAndRelease.md. Durable transitions or
-accepted decisions may have separate history records when needed.
+Version rules belong in the
+[organization VERSIONING](https://github.com/computer-mcp/.github/blob/master/VERSIONING.md).
+[Release](../Reference/Release.md) owns release facts and procedure. Durable
+transitions or accepted decisions may have separate history records when needed.
 GitHub-specific configuration belongs in .github/.
 
 The SwiftPM products are executables. Their user-facing interface is the CLI/MCP contract, documented in the manual and reference pages. There is no public library API or DocC catalog. Any future public library API needs a catalog beside its owning target; generated .doccarchive output remains a build artifact.
