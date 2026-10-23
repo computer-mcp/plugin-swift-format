@@ -55,7 +55,7 @@ host installation and real format/lint calls are separate manual acceptance.
 
 ## Derived Metadata and Drift Checks
 
-`Scripts/build_package.py` verifies the plugin ID, parses the CLI tree, skips
+`scripts/build_package.py` verifies the plugin ID, parses the CLI tree, skips
 hidden files and Python caches, rejects links and special files, and produces
 the same archive bytes from the same source. The builder receipt prints the ID,
 version and SHA-256.
@@ -78,7 +78,7 @@ The shared workflow checks that setting before writing a Release.
    and that the reviewed `master` commit has a successful `ci.yml` push run.
 2. Dispatch `release.yml` from `master` with `ref` set to that full commit SHA
    and `publish` set to `false` (the default). The pinned reusable workflow runs
-   `python3 Scripts/build_package.py` with an output directory and requires its
+   `python3 scripts/build_package.py` with an output directory and requires its
    `swift-format.zip` to match the archive in the exact
    `swift-format-plugin-<commit>` CI artifact byte for byte. Inspect the
    `plugin-release-<run-id>-<attempt>` workflow artifact: `assets/` contains the
@@ -147,7 +147,7 @@ acceptance record.
 | Operation | Existing command or explicit manual procedure | Required access |
 | --- | --- | --- |
 | Version update and check | Edit `computer-mcp-plugin.toml`; `python3 -m unittest discover -s Tests -p 'test_*.py'` | Local checkout |
-| Candidate validation and build | `ci.yml`; locally the commands in [CONTRIBUTING](../../CONTRIBUTING.md#validation), then `python3 Scripts/build_package.py dist` | CI or local checkout with Swift toolchain and resolved dependencies |
+| Candidate validation and build | `ci.yml`; locally the commands in [CONTRIBUTING](../../CONTRIBUTING.md#validation), then `python3 scripts/build_package.py dist` | CI or local checkout with Swift toolchain and resolved dependencies |
 | Native and host acceptance | Validate and install the exact archive with the selected host, bind the supported formatter and exercise format/lint calls | Selected host, formatter and authorized workspace |
 | Acceptance and publication | Manual checks above; dispatch `release.yml`, dry run first | Repository Actions; publication also needs a signing key and release write access |
 | Status and interrupted-run recovery | Inspect CI or `release.yml`; follow [Retry](#retry) | Repository Actions |

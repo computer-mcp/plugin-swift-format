@@ -10,7 +10,7 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "Scripts/build_package.py")
+SPEC = importlib.util.spec_from_file_location("build_package", ROOT / "scripts/build_package.py")
 BUILDER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDER)
 
@@ -84,7 +84,7 @@ class PackageTests(unittest.TestCase):
 
     def test_command_preserves_existing_artifacts(self):
         with tempfile.TemporaryDirectory() as temp:
-            command = [sys.executable, str(ROOT / "Scripts/build_package.py"), temp]
+            command = [sys.executable, str(ROOT / "scripts/build_package.py"), temp]
             first = subprocess.run(command, capture_output=True, timeout=10)
             second = subprocess.run(command, capture_output=True, timeout=10)
             self.assertEqual(first.returncode, 0, first.stderr)

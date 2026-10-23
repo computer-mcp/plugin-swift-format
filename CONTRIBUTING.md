@@ -14,7 +14,7 @@ swift format lint --strict --recursive --configuration .swift-format Package.swi
 swift test --disable-automatic-resolution
 swift build -c release --disable-automatic-resolution
 python3 -m unittest discover -s Tests -p 'test_*.py'
-python3 Scripts/build_package.py OUTPUT_DIRECTORY
+python3 scripts/build_package.py OUTPUT_DIRECTORY
 ```
 
 CI also repeats the Python tests and package build on Python 3.11. Exercise help, valid input and invalid input from outside the checkout. Keep command output contracts and generated resources covered by tests.

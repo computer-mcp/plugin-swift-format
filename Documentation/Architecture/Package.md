@@ -26,7 +26,7 @@ coverage limits are described in [Interface](../Reference/Interface.md).
 
 ## Distribution
 
-`Scripts/build_package.py` packages regular, bounded source files into a
+`scripts/build_package.py` packages regular, bounded source files into a
 deterministic ZIP. It includes the host-consumed declaration and CLI Tree,
 manuals and notices, while build products and maintainer source stay in the
 repository. The Python standard-library builder requires no vendor process.
