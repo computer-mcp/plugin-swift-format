@@ -150,7 +150,7 @@ acceptance record.
 | --- | --- | --- |
 | Version update and check | Edit `computer-mcp-plugin.toml`; `python3 -m unittest discover -s Tests -p 'test_*.py'` | Local checkout |
 | Candidate validation and build | `ci.yml`; locally the commands in [CONTRIBUTING](../../CONTRIBUTING.md#validation), then `python3 scripts/build_package.py dist` | CI or local checkout with Swift toolchain and resolved dependencies |
-| Native and host acceptance | Validate and install the exact archive with the selected host, bind the supported formatter and exercise format/lint calls | Selected host, formatter and authorized workspace |
+| Native and host acceptance | Validate and install the exact archive with the selected host, bind the supported formatter and exercise format/lint calls | Selected host, formatter and authorized project |
 | Acceptance and publication | Manual checks above; dispatch `release.yml`, dry run first | Repository Actions; publication also needs a signing key and release write access |
 | Status and interrupted-run recovery | Inspect CI or `release.yml`; follow [Retry](#retry) | Repository Actions |
 | Cleanup | Delete obsolete local output directories and reproducible `.build/` products | Local checkout |
