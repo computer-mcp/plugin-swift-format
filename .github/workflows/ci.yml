@@ -52,5 +52,3 @@ jobs:
         run: |
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 Scripts/build_package.py dist
-  brand:
-    uses: computer-mcp/.github/.github/workflows/brand-check.yml@f402911abcdfb87ef0c41a2759e8c51387b18935 # master
