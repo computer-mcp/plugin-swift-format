@@ -11,8 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/computer-mcp/plugin-swift-format/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/computer-mcp/plugin-swift-format/ci.yml?branch=master&label=CI&style=flat"></a>
-  <img alt="swift-format from Swift 6.3.1" src="https://img.shields.io/badge/swift--format-Swift%206.3.1-orange?style=flat">
-  <img alt="Platform: macOS" src="https://img.shields.io/badge/platform-macOS-lightgrey?style=flat">
+  <a href="cli-tree.json"><img alt="swift-format from Swift 6.3.1" src="https://img.shields.io/badge/swift--format-Swift%206.3.1-orange?style=flat"></a>
   <a href="LICENSE"><img alt="License: FSL-1.1-ALv2" src="https://img.shields.io/badge/license-FSL--1.1--ALv2-blue?style=flat"></a>
 </p>
 
@@ -121,7 +120,7 @@ needs no vendor-specific Gateway code.
 
 ## Requirements
 
-- Computer MCP on macOS.
+- Computer MCP.
 - `swift-format` from Swift 6.3.1, bound in the plugin's settings.
 - Python 3.11 or newer to build the package archive.
 - Swift 6.2 or newer to build and test the exporter.
