@@ -22,7 +22,8 @@ The `export-swift-format-tree` executable is a maintainer tool that regenerates
 `cli-tree.json`. It is not shipped and has no version of its own.
 
 The archive contains the manifest, `cli-tree.json`, the README, contribution
-guide, license, notices, `ThirdPartyNotices/` and `Documentation/`.
+guide, license, notices, `ThirdPartyNotices/`, `Documentation/`, and the README
+images `.github/assets/logo/logo-light.png` and `.github/assets/logo/logo-dark.png`.
 The exporter, tests, build scripts and workflows are excluded from the archive.
 
 ## Compatibility Surface
@@ -56,7 +57,8 @@ host installation and real format/lint calls are separate manual acceptance.
 ## Derived Metadata and Drift Checks
 
 `scripts/build_package.py` verifies the plugin ID, parses the CLI tree, skips
-hidden files and Python caches, rejects links and special files, and produces
+hidden files and Python caches during directory traversal, explicitly includes
+the two README logo files, rejects links and special files, and produces
 the same archive bytes from the same source. The builder receipt prints the ID,
 version and SHA-256.
 
