@@ -9,7 +9,7 @@ The organization [VERSIONING](https://github.com/computer-mcp/.github/blob/maste
 owns version rules, including tags, version choice and the changelog. This
 reference records this repository's version sources, compatibility, release
 procedure and checks. The shared
-[release workflow guide](https://github.com/computer-mcp/.github/blob/master/Documentation/Reference/PluginRelease.md)
+[release workflow guide](https://github.com/computer-mcp/github-workflows/blob/master/docs/plugin-release.md)
 describes workflow verification and recovery.
 
 ## Components and Version Sources
@@ -117,9 +117,9 @@ The job checks this repository's immutable ID, does not check out package code,
 and grants its own token no repository permissions. Missing or rejected
 authority fails the run visibly.
 
-The website's notification action is pinned to a reviewed full commit. Publish
-that website commit first, then update the pin here when adopting a change to
-the notification contract.
+The shared notification action in `computer-mcp/github-workflows` is pinned to a
+reviewed full commit. Update the pin here when adopting a reviewed change to the
+notification contract.
 
 A release published with a repository `GITHUB_TOKEN` does not trigger
 release-event workflows. `release.yml` calls `notify-catalog.yml` as a dependent
@@ -161,7 +161,7 @@ retention.
 ### Retry
 
 For a failed release run, use **Re-run failed jobs**. The shared workflow's
-[recovery procedure](https://github.com/computer-mcp/.github/blob/master/Documentation/Reference/PluginRelease.md#run-and-recover)
+[recovery procedure](https://github.com/computer-mcp/github-workflows/blob/master/docs/plugin-release.md#run-and-recover)
 owns draft recovery, frozen provenance and expired artifacts. A notification
 failure needs only the notification job rerun or a manual notification dispatch.
 

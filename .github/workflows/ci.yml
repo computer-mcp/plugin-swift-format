@@ -1,13 +1,14 @@
 name: CI
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches: [master]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   package:
@@ -52,3 +53,9 @@ jobs:
         run: |
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 Scripts/build_package.py dist
+  validate:
+    if: always()
+    needs: [package, minimum-python]
+    uses: computer-mcp/github-workflows/.github/workflows/result.yml@d65bc20504f39c3a30232d67043abeca43d2c7b1
+    with:
+      needs-json: ${{ toJSON(needs) }}
