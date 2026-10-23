@@ -19,14 +19,14 @@ is a separately resolved host dependency, never bundled or installed here.
 
 ## Boundaries
 
-The host owns workspace access, caller permissions, executable bindings and
+The host owns project access, caller permissions, executable bindings and
 runtime output limits. Version/interface checks distinguish the reviewed tree
 from an incompatible external installation. Current mapping and intentional
 coverage limits are described in [Interface](../Reference/Interface.md).
 
 ## Distribution
 
-`Scripts/build_package.py` packages regular, bounded source files into a
+`scripts/build_package.py` packages regular, bounded source files into a
 deterministic ZIP. It includes the host-consumed declaration and CLI Tree,
 manuals and notices, while build products and maintainer source stay in the
 repository. The Python standard-library builder requires no vendor process.

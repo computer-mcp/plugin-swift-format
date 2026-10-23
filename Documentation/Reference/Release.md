@@ -9,7 +9,7 @@ The organization [VERSIONING](https://github.com/computer-mcp/.github/blob/maste
 owns version rules, including tags, version choice and the changelog. This
 reference records this repository's version sources, compatibility, release
 procedure and checks. The shared
-[release workflow guide](https://github.com/computer-mcp/.github/blob/master/Documentation/Reference/PluginRelease.md)
+[release workflow guide](https://github.com/computer-mcp/github-workflows/blob/master/docs/plugin-release.md)
 describes workflow verification and recovery.
 
 ## Components and Version Sources
@@ -22,7 +22,8 @@ The `export-swift-format-tree` executable is a maintainer tool that regenerates
 `cli-tree.json`. It is not shipped and has no version of its own.
 
 The archive contains the manifest, `cli-tree.json`, the README, contribution
-guide, license, notices, `ThirdPartyNotices/` and `Documentation/`.
+guide, license, notices, `ThirdPartyNotices/`, `Documentation/`, and the README
+images `.github/assets/logo/logo-light.png` and `.github/assets/logo/logo-dark.png`.
 The exporter, tests, build scripts and workflows are excluded from the archive.
 
 ## Compatibility Surface
@@ -55,8 +56,9 @@ host installation and real format/lint calls are separate manual acceptance.
 
 ## Derived Metadata and Drift Checks
 
-`Scripts/build_package.py` verifies the plugin ID, parses the CLI tree, skips
-hidden files and Python caches, rejects links and special files, and produces
+`scripts/build_package.py` verifies the plugin ID, parses the CLI tree, skips
+hidden files and Python caches during directory traversal, explicitly includes
+the two README logo files, rejects links and special files, and produces
 the same archive bytes from the same source. The builder receipt prints the ID,
 version and SHA-256.
 
@@ -78,7 +80,7 @@ The shared workflow checks that setting before writing a Release.
    and that the reviewed `master` commit has a successful `ci.yml` push run.
 2. Dispatch `release.yml` from `master` with `ref` set to that full commit SHA
    and `publish` set to `false` (the default). The pinned reusable workflow runs
-   `python3 Scripts/build_package.py` with an output directory and requires its
+   `python3 scripts/build_package.py` with an output directory and requires its
    `swift-format.zip` to match the archive in the exact
    `swift-format-plugin-<commit>` CI artifact byte for byte. Inspect the
    `plugin-release-<run-id>-<attempt>` workflow artifact: `assets/` contains the
@@ -117,9 +119,9 @@ The job checks this repository's immutable ID, does not check out package code,
 and grants its own token no repository permissions. Missing or rejected
 authority fails the run visibly.
 
-The website's notification action is pinned to a reviewed full commit. Publish
-that website commit first, then update the pin here when adopting a change to
-the notification contract.
+The shared notification action in `computer-mcp/github-workflows` is pinned to a
+reviewed full commit. Update the pin here when adopting a reviewed change to the
+notification contract.
 
 A release published with a repository `GITHUB_TOKEN` does not trigger
 release-event workflows. `release.yml` calls `notify-catalog.yml` as a dependent
@@ -147,8 +149,8 @@ acceptance record.
 | Operation | Existing command or explicit manual procedure | Required access |
 | --- | --- | --- |
 | Version update and check | Edit `computer-mcp-plugin.toml`; `python3 -m unittest discover -s Tests -p 'test_*.py'` | Local checkout |
-| Candidate validation and build | `ci.yml`; locally the commands in [CONTRIBUTING](../../CONTRIBUTING.md#validation), then `python3 Scripts/build_package.py dist` | CI or local checkout with Swift toolchain and resolved dependencies |
-| Native and host acceptance | Validate and install the exact archive with the selected host, bind the supported formatter and exercise format/lint calls | Selected host, formatter and authorized workspace |
+| Candidate validation and build | `ci.yml`; locally the commands in [CONTRIBUTING](../../CONTRIBUTING.md#validation), then `python3 scripts/build_package.py dist` | CI or local checkout with Swift toolchain and resolved dependencies |
+| Native and host acceptance | Validate and install the exact archive with the selected host, bind the supported formatter and exercise format/lint calls | Selected host, formatter and authorized project |
 | Acceptance and publication | Manual checks above; dispatch `release.yml`, dry run first | Repository Actions; publication also needs a signing key and release write access |
 | Status and interrupted-run recovery | Inspect CI or `release.yml`; follow [Retry](#retry) | Repository Actions |
 | Cleanup | Delete obsolete local output directories and reproducible `.build/` products | Local checkout |
@@ -161,7 +163,7 @@ retention.
 ### Retry
 
 For a failed release run, use **Re-run failed jobs**. The shared workflow's
-[recovery procedure](https://github.com/computer-mcp/.github/blob/master/Documentation/Reference/PluginRelease.md#run-and-recover)
+[recovery procedure](https://github.com/computer-mcp/github-workflows/blob/master/docs/plugin-release.md#run-and-recover)
 owns draft recovery, frozen provenance and expired artifacts. A notification
 failure needs only the notification job rerun or a manual notification dispatch.
 

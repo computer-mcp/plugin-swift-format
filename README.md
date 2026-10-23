@@ -1,77 +1,108 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Documentation/Brand/header-dark.png">
-  <img alt="Computer MCP — Swift Format" src="Documentation/Brand/header-light.png">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo/logo-dark.png">
+    <img src=".github/assets/logo/logo-light.png" width="128" height="128" alt="">
+  </picture>
+</p>
 
-# Computer MCP — Swift Format
+<h1 align="center">Swift Format</h1>
 
-Part of the [Computer MCP](https://computer-mcp.github.io/) family.
-**Wherever you chat, your computer is there.**
+<p align="center">Computer MCP family plugin for verified Swift formatting and linting.</p>
 
-A Computer MCP plugin for the Swift Format supplied with Swift 6.3.1. It exposes
-formatting, linting, configuration output, and help through the Gateway's typed
-CLI tools. The installed formatter remains user-owned.
+<p align="center">
+  <a href="https://github.com/computer-mcp/plugin-swift-format/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/computer-mcp/plugin-swift-format/ci.yml?branch=master&label=CI&style=flat"></a>
+  <a href="cli-tree.json"><img alt="swift-format from Swift 6.3.1" src="https://img.shields.io/badge/swift--format-Swift%206.3.1-orange?style=flat"></a>
+  <a href="LICENSE"><img alt="License: FSL-1.1-ALv2" src="https://img.shields.io/badge/license-FSL--1.1--ALv2-blue?style=flat"></a>
+</p>
 
-## Setup
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="Documentation/Reference/Interface.md">Interface</a> ·
+  <a href="Documentation/README.md">Documentation</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-Add this checkout with Computer MCP's local plugin entry. In its settings, bind
-the `formatter` dependency to the actual `swift-format` executable supplied with
-Swift 6.3.1, verify its `--version`, then enable the `format` CLI contribution.
-The Gateway requires a workspace and Full Shell permission for these tools.
-Before every authorized invocation, the Gateway checks the executable's version
-and native interface digest against this plugin's baseline. A mismatch stops the
-invocation; select a compatible dependency binding or a reviewed plugin update.
-These checks run vendor code with closed stdin in the registered cwd/environment,
-share a bounded check budget, and do not run during installation or static doctor.
-This package installs neither Swift nor vendor binaries and does not alter PATH.
+## Overview
 
-Use `tools/list` to obtain generated tool names; titles contain the registration
-and command path. For the `format` command, pass:
+This plugin gives [Computer MCP](https://computer-mcp.github.io/) typed tools for the
+`swift-format` supplied with Swift 6.3.1: formatting, linting, configuration output and help.
+The formatter stays yours. The plugin ships no Swift or vendor binaries and does not change
+`PATH`; you bind the executable you already have.
+
+Before every authorized call, the Gateway checks the bound executable's version and native
+interface digest against this plugin's verified baseline. A mismatch stops the call until you
+select a compatible binding or install a reviewed plugin update. These checks run the vendor
+executable with closed stdin in the registered working directory and environment, share a
+bounded time budget, and never run during installation or a static doctor check.
+
+## Quick look
+
+The plugin adds one CLI contribution, `format`. Its root command formats, like the upstream
+default, and it has these subcommands:
+
+| Command | Result |
+| --- | --- |
+| `format` | Formats files or stdin; `in_place: true` overwrites the listed files |
+| `lint` | Reports style findings; `strict: true` makes findings fail the command |
+| `dump-configuration` | Prints the effective or default configuration as JSON |
+| `help` | Prints upstream help |
+
+Install it in the host, bind the `formatter` dependency, then call the generated tool. For
+`format`, pass:
 
 ```json
-{"paths":["-"],"source":"let value=1\n","color_diagnostics":false,"workspace_id":"YOUR_WORKSPACE"}
+{"paths":["-"],"source":"let value=1\n","color_diagnostics":false,"project_id":"YOUR_PROJECT"}
 ```
 
-The result contains real stdout/stderr, exit status, and timeout information.
-Use `paths` for files; `in_place: true` explicitly overwrites those files. Omitted
-paths still select stdin but emit an upstream deprecation warning; `["-"]` is
-the supported explicit stdin form. `lint` checks source and `strict: true` makes
-findings fail the command. No artificial dry-run is supplied.
+The result carries the real stdout, stderr, exit status and timeout information.
 
-## Interface coverage
+## Install
 
-`cli-tree.json` is generated from the native machine export, not parsed help text
-or a handwritten command list. Every argument of the five observed nodes is
-accounted for, including hidden debug arguments. Preferred spellings represent
-equivalent aliases; one Boolean represents the verified color/inverse pair.
-The native export's missing default-subcommand and stdin semantics are supplemented
-from the matching upstream source. See [Interface](Documentation/Reference/Interface.md).
+1. Build the package archive (see [Package archive](#package-archive)), or add this checkout with
+   Computer MCP's local plugin entry.
+2. Install the archive through the host's plugin management UI or CLI.
+3. In the plugin's settings, bind the `formatter` dependency to the actual `swift-format` from
+   Swift 6.3.1 and verify its `--version`.
+4. Enable the `format` CLI contribution. The tools run inside a project and need Full Shell
+   permission.
 
-Coverage is explicitly partial: experimental parser-control entry points are
-not formatting tools, and value-dependent upstream validation remains in the
-formatter. Unknown versions or a changed native export stop generation. Updating
-this plugin's verified interface does not require vendor-specific Gateway code.
+Disabling or removing the plugin revokes its contribution, not the external formatter. Host
+overrides and the dependency binding belong to Computer MCP.
 
-## Package archive
+## Usage
 
-With Python 3.11 or newer, run `python3 Scripts/build_package.py OUTPUT_DIRECTORY`
-to produce `swift-format.zip` and print its ID, version and SHA-256. The archive
-contains the declaration, generated tree, manuals, license and upstream notices; it
-contains neither the maintainer exporter nor the vendor formatter. Identical
-inputs produce identical bytes. An existing different artifact is preserved
-and causes an error. Install the ZIP through the host's plugin management UI or
-CLI, reviewing the dependency binding and grants independently.
+Use `tools/list` to obtain the generated tool names; titles contain the registration and command
+path. Pass files in `paths`; `["-"]` selects stdin explicitly. Omitting `paths` still reads stdin
+but emits an upstream deprecation warning. No artificial dry run is supplied.
 
-`.github/workflows/ci.yml` validates the exporter and package on pull
-requests, `master` pushes and manual runs, and repeats the package tests and
-build on Python 3.11. Its downloadable workflow artifacts are
-validation outputs, not a public plugin release or publisher verification.
+`cli-tree.json` is generated from the formatter's native machine export, not parsed help text or
+a handwritten list. Every argument of the five observed commands is accounted for, including
+hidden debug arguments; preferred spellings stand for equivalent aliases, and one Boolean covers
+the verified color/inverse pair. The export's missing default-subcommand and stdin semantics are
+supplemented from the matching upstream source. Coverage is explicitly partial: experimental
+parser-control entry points are not formatting tools, and value-dependent validation stays in the
+formatter. See [Interface](Documentation/Reference/Interface.md).
 
-## Regenerate and test
+### Package archive
 
-Requires Swift 6.2 or newer to build the exporter. It uses swift-argument-parser
-for named options, validation and generated help.
-The exporter is a maintainer tool, not a replacement formatter or runtime service.
+With Python 3.11 or newer:
+
+```sh
+python3 scripts/build_package.py OUTPUT_DIRECTORY
+```
+
+This writes `swift-format.zip` and prints its ID, version and SHA-256. The archive contains the
+declaration, generated tree, manuals, license and upstream notices; it contains neither the
+maintainer exporter nor the vendor formatter. Identical inputs produce identical bytes, and an
+existing different archive is preserved and reported as an error. Review the dependency binding
+and grants when you install it.
+
+### Regenerate the interface
+
+The exporter is a maintainer tool, not a replacement formatter or runtime service. Build it with
+Swift 6.2 or newer; it uses swift-argument-parser for options, validation and help. In a shell
+with `set -o pipefail`:
 
 ```sh
 swift build
@@ -81,21 +112,35 @@ SWIFT_FORMAT=/absolute/path/to/swift-format
   --executable-version "$("$SWIFT_FORMAT" --version)" --output cli-tree.json
 ```
 
-Use a shell with pipeline failure propagation (`set -o pipefail`). The native
-export must match the pinned baseline. Review upstream source and tests before
-supporting another version; do not bypass the drift check. The exporter writes
-atomically after complete validation, and reports structured errors on stderr.
-No global installation is needed; it runs by explicit path from any directory.
+The native export must match the pinned baseline: an unknown version or a changed export stops
+generation. Review upstream source and tests before supporting another version, and do not bypass
+the drift check. The exporter writes atomically after complete validation, reports structured
+errors on stderr, and runs by explicit path from any directory. Updating the verified interface
+needs no vendor-specific Gateway code.
 
-Disabling or removing the plugin revokes its contribution, not the external
-formatter. Host overrides and the dependency binding belong to Computer MCP.
+## Requirements
 
-See the [documentation index](Documentation/README.md) and
-[contributor guide](CONTRIBUTING.md) for architecture and validation guidance.
+- Computer MCP.
+- `swift-format` from Swift 6.3.1, bound in the plugin's settings.
+- Python 3.11 or newer to build the package archive.
+- Swift 6.2 or newer to build and test the exporter.
+
+## Documentation
+
+The [documentation index](Documentation/README.md) covers the architecture, the
+[interface](Documentation/Reference/Interface.md) and the
+[release process](Documentation/Reference/Release.md). CI validates the exporter and the package
+on pull requests, `master` pushes and manual runs, and repeats the package tests and build on
+Python 3.11. Its downloadable workflow artifacts are validation outputs, not a public plugin
+release.
+
+## Contributing
+
+See the [contributor guide](CONTRIBUTING.md).
 
 ## License
 
 Computer MCP-owned code and resources use the
-[Functional Source License 1.1, Apache 2.0 Future License](LICENSE)
-(FSL-1.1-ALv2). [Third-party notices](THIRD_PARTY_NOTICES.md) identify the
-separate rights covering upstream descriptions and dependencies.
+[Functional Source License 1.1, Apache 2.0 Future License](LICENSE) (FSL-1.1-ALv2).
+[Third-party notices](THIRD_PARTY_NOTICES.md) identify the separate rights covering upstream
+descriptions and dependencies.

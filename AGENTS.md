@@ -152,13 +152,3 @@ source of truth instead of a literal value.
 ## Repository Guardrails
 
 Read Package.swift and computer-mcp-plugin.toml before editing. Keep the exporter separate from the vendor formatter. Generate cli-tree.json from verified native input; preserve upstream notices and never hand-edit generated output. Run swift build, swift test and swift-format lint before handoff. Do not install vendor binaries or change global PATH.
-
-## Brand delivery
-
-The organization `.github` repository owns the design system and renders every
-image; the main Computer MCP repository owns ProductIdentity. Imported
-`Documentation/Brand/header-light.png` and `header-dark.png` travel with the
-packaged manual; `.github/brand/social.png` supplies the repository preview.
-`.github/brand/brand.lock.json` binds them to the organization exports, and CI
-verifies it with the shared brand-check workflow. Update imports with the
-organization repository's `python3 Brand/brand.py sync`.

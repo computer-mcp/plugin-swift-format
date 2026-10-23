@@ -15,7 +15,8 @@ def package_bytes(root):
     pending = [root / name for name in (
         "computer-mcp-plugin.toml", "cli-tree.json", "README.md", "CONTRIBUTING.md",
         "LICENSE", "THIRD_PARTY_NOTICES.md", "ThirdPartyNotices.txt",
-        "NOTICE.md", "ThirdPartyNotices", "Documentation")]
+        "NOTICE.md", "ThirdPartyNotices", "Documentation",
+        ".github/assets/logo/logo-light.png", ".github/assets/logo/logo-dark.png")]
     contents = {}
     count = total = 0
     while pending:
