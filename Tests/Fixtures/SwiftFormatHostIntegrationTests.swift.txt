@@ -32,10 +32,10 @@ struct SwiftFormatHostIntegrationTests {
     let cases: [String]
     if mode == "deterministic" {
       try await admission(package)
-      try await withFormatterHarness(package) { h in
-        try await binding(h)
-        try await boundaries(h)
-        try await revocation(h)
+      try await withFormatterHarness(package, phase: "deterministic", outsideTargets: true) { h in
+        try await formatterPhase("binding") { try await binding(h) }
+        try await formatterPhase("boundaries") { try await boundaries(h) }
+        try await formatterPhase("revocation") { try await revocation(h) }
       }
       cases = ["admission", "binding", "boundaries", "revocation", "cleanup"]
     } else {
@@ -43,7 +43,9 @@ struct SwiftFormatHostIntegrationTests {
       let executable = URL(
         fileURLWithPath: try #require(environment["COMPUTER_MCP_FORMATTER_EXECUTABLE"]))
       let executableBefore = try formatterDigest(executable)
-      try await withFormatterHarness(package, executable: executable) { h in
+      try await withFormatterHarness(
+        package, phase: "native", outsideTargets: true, executable: executable
+      ) { h in
         try await native(h)
       }
       #expect(try formatterDigest(executable) == executableBefore)
@@ -66,11 +68,13 @@ struct SwiftFormatHostIntegrationTests {
       architecture: PluginHost.architecture)
     #expect(disabled.cliCommands.isEmpty)
     var admittedFormatName: String?
-    for (callerWrite, providerWrite, use) in [
-      (false, true, true), (true, false, true), (true, true, false), (true, true, true),
+    for (phase, callerWrite, providerWrite, use) in [
+      ("caller-read", false, true, true), ("provider-read", true, false, true),
+      ("no-plugin-use", true, true, false), ("authorized", true, true, true),
     ] {
       try await withFormatterHarness(
-        package, callerWrite: callerWrite, providerWrite: providerWrite, pluginUse: use
+        package, phase: phase, callerWrite: callerWrite, providerWrite: providerWrite,
+        pluginUse: use
       ) { h in
         let tools = try h.tools()
         try #require(tools.count == 5)
@@ -103,7 +107,7 @@ struct SwiftFormatHostIntegrationTests {
       }
     }
     let name = try #require(admittedFormatName)
-    try await withFormatterHarness(package, approved: false) { h in
+    try await withFormatterHarness(package, phase: "unapproved", approved: false) { h in
       let before = h.base.observations.members.count
       do {
         _ = try await h.gateway.callToolAsync(
@@ -174,7 +178,7 @@ struct SwiftFormatHostIntegrationTests {
     for path in h.outside { #expect(try String(contentsOf: path, encoding: .utf8) == "sentinel") }
     try await h.base.requireNoScratch()
     #expect(!FileManager.default.fileExists(atPath: scratch + "/consumer-marker"))
-    try h.network.requireNoTraffic()
+    try #require(h.network).requireNoTraffic()
   }
 
   private func revocation(_ h: FormatterHarness) async throws {
@@ -393,21 +397,41 @@ private func formatterResult(_ value: JSONValue) throws -> [String: JSONValue] {
   try #require(value.objectValue?["structuredContent"]?.objectValue?["result"]?.objectValue)
 }
 
+private func formatterPhase<Result>(
+  _ name: String, _ operation: () async throws -> Result
+) async rethrows -> Result {
+  let start = ContinuousClock.now
+  FileHandle.standardOutput.write(Data("Formatter phase \(name) started\n".utf8))
+  defer {
+    let elapsed = start.duration(to: .now)
+    FileHandle.standardOutput.write(Data("Formatter phase \(name) ended after \(elapsed)\n".utf8))
+  }
+  return try await operation()
+}
+
 private func withFormatterHarness(
-  _ package: PluginPackage, executable: URL? = nil, callerWrite: Bool = true,
-  providerWrite: Bool = true, pluginUse: Bool = true, approved: Bool = true,
-  operation: (FormatterHarness) async throws -> Void
+  _ package: PluginPackage, phase: String, outsideTargets: Bool = false, executable: URL? = nil,
+  callerWrite: Bool = true, providerWrite: Bool = true, pluginUse: Bool = true,
+  approved: Bool = true, operation: (FormatterHarness) async throws -> Void
 ) async throws {
-  let h = try await FormatterHarness.make(
-    package, executable: executable, callerWrite: callerWrite, providerWrite: providerWrite,
-    pluginUse: pluginUse, approved: approved)
+  let h = try await formatterPhase("\(phase) setup") {
+    try await FormatterHarness.make(
+      package, outsideTargets: outsideTargets, executable: executable, callerWrite: callerWrite,
+      providerWrite: providerWrite, pluginUse: pluginUse, approved: approved)
+  }
+  // Join cleanup even when the test task has already been cancelled.
+  func close() async throws {
+    try await formatterPhase("\(phase) cleanup") {
+      try await Task { try await h.close() }.value
+    }
+  }
   do {
-    try await operation(h)
+    try await formatterPhase("\(phase) execution") { try await operation(h) }
   } catch {
-    do { try await h.close() } catch { Issue.record("Consumer cleanup failed: \(error)") }
+    do { try await close() } catch { Issue.record("Consumer cleanup failed: \(error)") }
     throw error
   }
-  try await h.close()
+  try await close()
 }
 
 private final class FormatterHarness: @unchecked Sendable {
@@ -420,13 +444,13 @@ private final class FormatterHarness: @unchecked Sendable {
   let projects: [String]
   let worktreePaths: [URL]
   let outside: [URL]
-  let network: FormatterLoopback
+  let network: FormatterLoopback?
 
   init(
     base: FixedHostFixture, lifecycle: GatewayStandaloneGenerations, gateway: GatewayRuntime,
     owner: GatewayPermissionOwner,
     package: PluginPackage, worktree: URL, projects: [String], worktreePaths: [URL], outside: [URL],
-    network: FormatterLoopback
+    network: FormatterLoopback?
   ) {
     self.base = base
     self.lifecycle = lifecycle
@@ -441,8 +465,8 @@ private final class FormatterHarness: @unchecked Sendable {
   }
 
   static func make(
-    _ package: PluginPackage, executable: URL?, callerWrite: Bool, providerWrite: Bool,
-    pluginUse: Bool, approved: Bool
+    _ package: PluginPackage, outsideTargets: Bool, executable: URL?, callerWrite: Bool,
+    providerWrite: Bool, pluginUse: Bool, approved: Bool
   ) async throws -> FormatterHarness {
     let base = try FixedHostFixture(fullAccess: false, lifecycle: true)
     let lifecycle = GatewayStandaloneGenerations(base.runtime)
@@ -453,7 +477,7 @@ private final class FormatterHarness: @unchecked Sendable {
     var pendingNetwork: FormatterLoopback?
     do {
       try await base.initializeRepository()
-      for name in ["formatter", "sibling"] {
+      for name in outsideTargets ? ["formatter", "sibling"] : ["formatter"] {
         let response = try await lifecycle.callToolForMCPAsync(
           name: "git.worktree_add", arguments: .object(["name": .string(name)]),
           context: .init(session: base.session))
@@ -464,29 +488,28 @@ private final class FormatterHarness: @unchecked Sendable {
         projects.append(try #require(result["project_id"]?.stringValue))
         paths.append(URL(fileURLWithPath: try #require(result["path"]?.stringValue)))
       }
-      let foreign = try base.database.prepareProviderContainer(.package("foreign"))
-      let foreignSandbox = try foreign.sandbox
-      let outside = [
-        base.project.appendingPathComponent("outside.swift"),
-        paths[1].appendingPathComponent("outside.swift"),
-        base.root.appendingPathComponent("host-secret"),
-        URL(fileURLWithPath: foreignSandbox.state.value).appendingPathComponent("outside.swift"),
-      ]
-      for path in outside { try Data("sentinel".utf8).write(to: path) }
-      try FileManager.default.createSymbolicLink(
-        at: paths[0].appendingPathComponent("escape.swift"), withDestinationURL: outside[0])
-      let network = try FormatterLoopback()
-      pendingNetwork = network
-      let command: URL
-      do {
-        command =
-          try executable
-          ?? compileFormatterPeer(
-            package: package, root: base.root, outside: outside, port: network.port)
-      } catch {
-        network.close()
-        throw error
+      var outside: [URL] = []
+      if outsideTargets {
+        let foreign = try base.database.prepareProviderContainer(.package("foreign"))
+        let foreignSandbox = try foreign.sandbox
+        outside = [
+          base.project.appendingPathComponent("outside.swift"),
+          paths[1].appendingPathComponent("outside.swift"),
+          base.root.appendingPathComponent("host-secret"),
+          URL(fileURLWithPath: foreignSandbox.state.value).appendingPathComponent("outside.swift"),
+        ]
+        for path in outside { try Data("sentinel".utf8).write(to: path) }
+        try FileManager.default.createSymbolicLink(
+          at: paths[0].appendingPathComponent("escape.swift"), withDestinationURL: outside[0])
       }
+      // Only the deterministic boundary peer sends network traffic.
+      let network = try outsideTargets && executable == nil ? FormatterLoopback() : nil
+      pendingNetwork = network
+      let command =
+        try executable
+        ?? compileFormatterPeer(
+          package: package, root: base.root, outside: outside, port: network?.port ?? 0)
+
       let plugin = try PluginResolver.resolve(
         package: package, source: .init(kind: .development, root: package.root),
         settings: .init(
