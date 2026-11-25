@@ -1,11 +1,14 @@
+import hashlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 import zipfile
 
@@ -16,6 +19,27 @@ SPEC.loader.exec_module(BUILDER)
 
 
 class PackageTests(unittest.TestCase):
+    def test_project_write_declaration_and_original_executable_checks(self):
+        manifest = tomllib.loads((ROOT / "computer-mcp-plugin.toml").read_text())
+        self.assertEqual(len(manifest["permissions"]), 1)
+        permission = manifest["permissions"][0]
+        self.assertEqual((permission["id"], permission["access"]), ("project", "write"))
+        self.assertTrue(permission["purpose"].strip())
+        self.assertEqual(manifest["sandbox"]["network"], "none")
+        self.assertTrue(manifest["sandbox"]["purpose"].strip())
+        self.assertNotIn("full_access", manifest["sandbox"])
+        self.assertNotIn("read_exceptions", manifest["sandbox"])
+        self.assertNotIn("mcp", manifest)
+        self.assertEqual(manifest["cli"][0]["executable"], {"dependency": "formatter"})
+        raw = (ROOT / "cli-tree.json").read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         "60b91b936d1bc388246a08ab18d935dd29833f73744cc8ff0aa8bb7d19383c3b")
+        self.assertEqual(json.loads(raw)["executable_checks"], [
+            {"args": ["--version"], "stdout": "6.3.1\n"},
+            {"args": ["--experimental-dump-help"],
+             "stdout_sha256": "afce7a2f8c5b0825b90ce7061c6508eb5545b07b1414ed853c23a0fb6ab8c14e"},
+        ])
+
     def test_reproducible_declaration_and_notices_without_executables(self):
         first, manifest = BUILDER.package_bytes(ROOT)
         self.assertEqual(first, BUILDER.package_bytes(ROOT)[0])
