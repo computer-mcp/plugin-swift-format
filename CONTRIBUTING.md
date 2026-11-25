@@ -54,8 +54,13 @@ dispatch, container placement, outside-write/symlink/network denial and revocati
 Native cases format files in a host-created worktree, lint, print help and
 configuration, and attempt writes outside that worktree with network none.
 The test removes its own disposable worktrees through the host and joins process
-cleanup before removing temporary state. Remote CI must run the same driver at
-the reviewed host SHA; the local command alone does not establish CI coverage.
+cleanup before removing temporary state. The macOS CI job runs the deterministic
+mode against the public Host source commit in
+[.github/computer-mcp-host.sha](.github/computer-mcp-host.sha) and the plugin
+commit actually checked out by CI. For the same check locally, set
+`REVIEWED_HOST_SHA` from that pin and `FORMAT_PLUGIN_SHA` from the clean plugin
+checkout's `git rev-parse HEAD`. Native mode is run separately with the explicit
+formatter binding.
 
 ## Documentation
 
