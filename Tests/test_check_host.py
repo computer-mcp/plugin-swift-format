@@ -24,6 +24,7 @@ class DriverTests(unittest.TestCase):
         self.root = Path(self.temporary.name).resolve()
         self.host = self.root / "host"
         self.plugin = self.root / "plugin"
+        self.output = self.plugin / ".build/host-check/deterministic"
         (self.host / "Tests/ComputerMCPMacOSTests").mkdir(parents=True)
         (self.plugin / "Tests/Fixtures").mkdir(parents=True)
         self.source = self.plugin / "Tests/Fixtures" / (DRIVER.FIXTURE + ".txt")
@@ -53,11 +54,14 @@ class DriverTests(unittest.TestCase):
             self.assertEqual(self.target.read_bytes(), self.source.read_bytes())
             self.assertEqual(environment["COMPUTER_MCP_FORMATTER_PLUGIN"], str(self.plugin))
             self.assertNotIn("COMPUTER_MCP_FORMATTER_EXECUTABLE", environment)
+            self.assertEqual(log, self.output / "swift-test.log")
+            self.assertEqual(Path(environment["COMPUTER_MCP_FORMATTER_EVIDENCE"]),
+                             self.output / "cases.json")
             self.evidence(environment)
         with patch.dict(os.environ, {"COMPUTER_MCP_FORMATTER_EXECUTABLE": "/ambient/tool"}):
             self.execute(runner)
         self.assertFalse(self.target.exists())
-        receipt = json.loads((self.plugin / ".agent/host-check/deterministic/receipt.json").read_text())
+        receipt = json.loads((self.output / "receipt.json").read_text())
         self.assertEqual(receipt["host_sha"], "a" * 40)
         self.assertEqual(receipt["cleanup"], "confirmed")
         self.assertEqual(receipt["inputs_sha256"][str(self.source)], DRIVER.digest(self.source))
@@ -74,7 +78,7 @@ class DriverTests(unittest.TestCase):
                 with self.assertRaises((ValueError, FileNotFoundError)):
                     self.execute(runner)
                 self.assertFalse(self.target.exists())
-                self.assertFalse((self.plugin / ".agent/host-check/deterministic/receipt.json").exists())
+                self.assertFalse((self.output / "receipt.json").exists())
 
     def test_runner_failure_removes_only_owned_fixture(self):
         def runner(*args):

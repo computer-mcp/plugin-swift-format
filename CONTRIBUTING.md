@@ -40,12 +40,13 @@ python3 -B scripts/check_host.py \
 ```
 
 The driver invokes SwiftPM’s native build system from the host root. Its bounded
-run writes a log and JSON receipt under `.agent/host-check/<mode>/` in the plugin
-checkout. Nonzero exits, missing case evidence, changed inputs, timeouts and
-unconfirmed process cleanup fail verification. Native cases must execute; a
-skipped suite cannot pass. Retain receipts with the owning task’s evidence, then
-remove the ignored output directory when no longer required. If a timeout interrupts
-host cleanup, retain the fixture root named in the log for host execution recovery.
+run writes the test log, case evidence and success receipt under the plugin
+checkout’s ignored `.build/host-check/<mode>/` directory. Nonzero exits, missing
+case evidence, changed inputs, timeouts and unconfirmed process cleanup fail
+verification. Native cases must execute for verification to pass. Retain receipts
+with the owning task’s evidence, then remove the ignored output directory when no
+longer required. If a timeout interrupts host cleanup, retain the fixture root
+named in the log for host execution recovery.
 A failed or interrupted run has no success receipt and does not confirm that
 isolated host executions have exited.
 

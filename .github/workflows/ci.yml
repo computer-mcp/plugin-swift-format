@@ -74,7 +74,7 @@ jobs:
           git -C "$host_checkout" fetch --no-tags --depth=1 https://github.com/computer-mcp/computer-mcp.git "$host_revision"
           git -C "$host_checkout" checkout --detach FETCH_HEAD
 
-          evidence=.agent/host-check/deterministic
+          evidence=.build/host-check/deterministic
           if ! python3 -B scripts/check_host.py \
             --host-source "$host_checkout" --host-sha "$host_revision" \
             --plugin-source "$PWD" --plugin-sha "$plugin_revision" \

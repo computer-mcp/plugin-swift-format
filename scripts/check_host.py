@@ -95,7 +95,7 @@ def run(args):
     if args.formatter:
         inputs.append(args.formatter)
     before = {str(path): digest(path) for path in inputs}
-    output = args.plugin_source / ".agent/host-check" / args.mode
+    output = args.plugin_source / ".build/host-check" / args.mode
     if not git(args.plugin_source, "check-ignore", str(output / "receipt.json")):
         raise ValueError("Host-check output must be ignored by the plugin repository")
     output.mkdir(parents=True, exist_ok=True)
