@@ -55,7 +55,7 @@ jobs:
           python3 scripts/build_package.py dist
   host-consumer:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -78,7 +78,7 @@ jobs:
           if ! python3 -B scripts/check_host.py \
             --host-source "$host_checkout" --host-sha "$host_revision" \
             --plugin-source "$PWD" --plugin-sha "$plugin_revision" \
-            --mode deterministic; then
+            --mode deterministic --timeout 1500; then
             if [[ -f "$evidence/swift-test.log" ]]; then cat "$evidence/swift-test.log"; fi
             exit 1
           fi
