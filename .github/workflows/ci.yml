@@ -53,9 +53,39 @@ jobs:
         run: |
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 scripts/build_package.py dist
+  host-consumer:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - name: Verify deterministic consumer against pinned Host source
+        shell: bash
+        run: |
+          host_revision=$(cat .github/computer-mcp-host.sha)
+          [[ "$host_revision" =~ ^[0-9a-f]{40}$ && "$host_revision" != 0000000000000000000000000000000000000000 ]]
+          plugin_revision=$(git rev-parse HEAD)
+          host_checkout="$RUNNER_TEMP/computer-mcp-host"
+          git init "$host_checkout"
+          git -C "$host_checkout" fetch --no-tags --depth=1 https://github.com/computer-mcp/computer-mcp.git "$host_revision"
+          git -C "$host_checkout" checkout --detach FETCH_HEAD
+
+          evidence=.build/host-check/deterministic
+          if ! python3 -B scripts/check_host.py \
+            --host-source "$host_checkout" --host-sha "$host_revision" \
+            --plugin-source "$PWD" --plugin-sha "$plugin_revision" \
+            --mode deterministic --timeout 1500; then
+            if [[ -f "$evidence/swift-test.log" ]]; then cat "$evidence/swift-test.log"; fi
+            exit 1
+          fi
+          cat "$evidence/receipt.json"
   validate:
     if: always()
-    needs: [package, minimum-python]
+    needs: [package, minimum-python, host-consumer]
     uses: computer-mcp/github-workflows/.github/workflows/result.yml@fd25fcface41732fda099017c6945912366fc7c1
     with:
       needs-json: ${{ toJSON(needs) }}

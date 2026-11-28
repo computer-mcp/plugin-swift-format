@@ -65,3 +65,25 @@ The capture includes every observed node/argument but is not a claim of every
 ArgumentParser control entry point or every repeated-alias token sequence.
 Unsupported formatter versions require a reviewed plugin update. File trees
 are refreshed by the host; this package never installs or upgrades the formatter.
+
+## Host authority and isolation
+
+The manifest requests Project write to execute the native CLI tree. The calling
+client needs Plugin use and Project write, and the provider needs its own current
+owner approval and Project write selection. These requirements apply to root,
+format, lint, dump-configuration, native help and all help flags. The separate
+host `cli.help` operation reads catalog metadata without executing the vendor.
+Declarations, installation and a successful executable check grant no access.
+
+The host selects the invocation worktree, bounds execution and owns the plugin’s
+persistent home/cache/state container and per-execution scratch. The declaration
+requests network none, no Full access and no existing-configuration read
+exceptions. The plugin does not choose storage paths or implement enforcement.
+Disabling or revoking the provider ends its authority; reapproval cannot revive
+an execution admitted under earlier authority.
+
+Consumer verification lives in `Tests/Fixtures/SwiftFormatHostIntegrationTests.swift.txt`
+and runs through `scripts/check_host.py` against an explicit host checkout and full
+commit SHA. Deterministic peer boundary tests and real formatter behavior are
+separate cases; a synthetic connection denial is not a native formatter result.
+See [Contributing](../../CONTRIBUTING.md) for inputs and cleanup.

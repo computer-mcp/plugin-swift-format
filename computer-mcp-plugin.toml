@@ -4,6 +4,15 @@ version = '0.1.0'
 plugin_api = 1
 description = 'Swift source formatting and linting through a verified native command-tree export.'
 
+[[permissions]]
+id = 'project'
+access = 'write'
+purpose = 'Format and lint Swift source in the selected project worktree.'
+
+[sandbox]
+network = 'none'
+purpose = 'Run Swift Format locally without network access.'
+
 [[dependencies]]
 id = 'formatter'
 commands = ['swift-format']

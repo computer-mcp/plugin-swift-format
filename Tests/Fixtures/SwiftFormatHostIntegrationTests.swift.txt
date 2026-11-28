@@ -1,0 +1,808 @@
+import ComputerMCPMacOS
+import ComputerMCPPermissions
+import ComputerMCPTestSupport
+import CryptoKit
+import Darwin
+import Foundation
+import Testing
+
+@testable import ComputerMCPConfiguration
+@testable import ComputerMCPCore
+@testable import ComputerMCPGateway
+@testable import ComputerMCPPlugins
+
+@Suite(.nativeIntegration, .serialized, .timeLimit(.minutes(5)))
+struct SwiftFormatHostIntegrationTests {
+  @Test func consumerContract() async throws {
+    let environment = ProcessInfo.processInfo.environment
+    let root = URL(fileURLWithPath: try #require(environment["COMPUTER_MCP_FORMATTER_PLUGIN"]))
+    let package = try PluginPackage.load(at: root)
+    try #require(package.manifest.id == "swift-format")
+    try #require(package.manifest.permissions?.map(\.id) == [.project])
+    try #require(package.manifest.permissions?.first?.access == .write)
+    try #require(package.manifest.sandbox?.network == .some(.none))
+    try #require(package.manifest.sandbox?.fullAccess == false)
+    try #require(package.manifest.sandbox?.readExceptions == nil)
+    let tree = root.appendingPathComponent("cli-tree.json")
+    try #require(
+      try formatterDigest(tree)
+        == "60b91b936d1bc388246a08ab18d935dd29833f73744cc8ff0aa8bb7d19383c3b")
+    let before = try formatterDigest(root.appendingPathComponent(PluginManifest.filename))
+    let mode = try #require(environment["COMPUTER_MCP_FORMATTER_MODE"])
+    let cases: [String]
+    if mode == "deterministic" {
+      try await admission(package)
+      try await withFormatterHarness(package, phase: "deterministic", outsideTargets: true) { h in
+        try await formatterPhase("binding") { try await binding(h) }
+        try await formatterPhase("boundaries") { try await boundaries(h) }
+        try await formatterPhase("revocation") { try await revocation(h) }
+      }
+      cases = ["admission", "binding", "boundaries", "revocation", "cleanup"]
+    } else {
+      try #require(mode == "native")
+      let executable = URL(
+        fileURLWithPath: try #require(environment["COMPUTER_MCP_FORMATTER_EXECUTABLE"]))
+      let executableBefore = try formatterDigest(executable)
+      try await withFormatterHarness(
+        package, phase: "native", outsideTargets: true, executable: executable
+      ) { h in
+        try await native(h)
+      }
+      #expect(try formatterDigest(executable) == executableBefore)
+      cases = ["format", "lint", "help", "configuration", "outside", "cleanup"]
+    }
+    #expect(try formatterDigest(root.appendingPathComponent(PluginManifest.filename)) == before)
+    #expect(
+      try formatterDigest(tree)
+        == "60b91b936d1bc388246a08ab18d935dd29833f73744cc8ff0aa8bb7d19383c3b")
+    let evidence = URL(
+      fileURLWithPath: try #require(environment["COMPUTER_MCP_FORMATTER_EVIDENCE"]))
+    try JSONSerialization.data(withJSONObject: ["mode": mode, "cases": cases])
+      .write(to: evidence, options: .atomic)
+  }
+
+  private func admission(_ package: PluginPackage) async throws {
+    let disabled = try PluginResolver.resolve(
+      package: package, source: .init(kind: .development, root: package.root),
+      settings: .init(enabled: false), hostVersion: PluginVersion(ComputerMCPCLI.version),
+      architecture: PluginHost.architecture)
+    #expect(disabled.cliCommands.isEmpty)
+    var admittedFormatName: String?
+    for (phase, callerWrite, providerWrite, use) in [
+      ("caller-read", false, true, true), ("provider-read", true, false, true),
+      ("no-plugin-use", true, true, false), ("authorized", true, true, true),
+    ] {
+      try await withFormatterHarness(
+        package, phase: phase, callerWrite: callerWrite, providerWrite: providerWrite,
+        pluginUse: use
+      ) { h in
+        let tools = try h.tools()
+        try #require(tools.count == 5)
+        if callerWrite && providerWrite && use {
+          admittedFormatName =
+            tools.first {
+              $0.meta?.objectValue?["cli"]?.objectValue?["command"] == .string("format")
+            }?.name
+        }
+        let before = h.base.observations.members.count
+        _ = try await h.gateway.callToolAsync(
+          name: "cli.help", arguments: .object(["id": .string("formatter-consumer")]),
+          context: .empty)
+        #expect(h.base.observations.members.count == before)
+        for command in ["root", "format", "lint", "help", "dump_configuration"] {
+          for arguments: [String: JSONValue] in [[:], ["help": .bool(true)]] {
+            if callerWrite && providerWrite && use {
+              let result = try await h.call(command, arguments)
+              #expect(result.objectValue?["isError"] == .bool(false))
+            } else {
+              await #expect(throws: GatewayPermissionCallError.self) {
+                try await h.call(command, arguments)
+              }
+              #expect(h.base.observations.members.count == before)
+              #expect(
+                !FileManager.default.fileExists(atPath: h.worktree.path + "/target-dispatched"))
+            }
+          }
+        }
+      }
+    }
+    let name = try #require(admittedFormatName)
+    try await withFormatterHarness(package, phase: "unapproved", approved: false) { h in
+      let before = h.base.observations.members.count
+      do {
+        _ = try await h.gateway.callToolAsync(
+          name: name, arguments: .object([:]), context: .empty)
+        Issue.record("An unapproved provider dispatched a command")
+      } catch {
+        let reason = String(describing: error).lowercased()
+        #expect(
+          reason.contains("approval") || reason.contains("binding")
+            || reason.contains("disabled") || reason.contains("unknowntool"))
+      }
+      #expect(h.base.observations.members.count == before)
+    }
+  }
+
+  private func binding(_ h: FormatterHarness) async throws {
+    let container = try h.base.database.prepareProviderContainer(.package("swift-format"))
+    let home = URL(fileURLWithPath: try container.sandbox.home.value)
+    func count(_ name: String) -> Int {
+      (try? Data(contentsOf: home.appendingPathComponent(name)).count) ?? 0
+    }
+    for mode in ["bad-version", "bad-export"] {
+      try h.setMode(mode)
+      let versions = count("version-check")
+      let exports = count("export-check")
+      let marker = h.worktree.appendingPathComponent("target-dispatched")
+      try? FileManager.default.removeItem(at: marker)
+      do {
+        let result = try await h.call("format", [:])
+        #expect(result.objectValue?["isError"] == .bool(true))
+      } catch {
+        #expect(String(describing: error).lowercased().contains("check"))
+      }
+      #expect(!FileManager.default.fileExists(atPath: marker.path))
+      #expect(count("version-check") == versions + 1)
+      #expect(count("export-check") == exports + (mode == "bad-export" ? 1 : 0))
+    }
+    try h.setMode("normal")
+    #expect(try await h.call("format", [:]).objectValue?["isError"] == .bool(false))
+  }
+
+  private func boundaries(_ h: FormatterHarness) async throws {
+    try h.setMode("boundaries")
+    let result = try formatterResult(try await h.call("format", [:]))
+    #expect(result["exit_code"] == .integer(0))
+    let output = try #require(result["stdout"]?.objectValue?["data"]?.stringValue)
+    let record = try #require(
+      JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: String])
+    let cwd = URL(fileURLWithPath: try #require(record["cwd"]), isDirectory: true)
+    #expect(
+      cwd.resolvingSymlinksInPath().standardizedFileURL
+        == h.worktree.resolvingSymlinksInPath().standardizedFileURL)
+    let container = try h.base.database.prepareProviderContainer(.package("swift-format"))
+    let sandbox = try container.sandbox
+    #expect(record["home"] == sandbox.home.value)
+    #expect(record["cache"] == sandbox.cache.value)
+    #expect(record["state"] == sandbox.state.value)
+    let scratch = try #require(record["scratch"])
+    #expect(scratch != h.worktree.path && !scratch.hasPrefix(sandbox.root.value + "/"))
+    for location in [sandbox.home, sandbox.cache, sandbox.state] {
+      #expect(FileManager.default.fileExists(atPath: location.value + "/consumer-marker"))
+    }
+    _ = try await h.call("format", [:])
+    #expect(
+      try String(
+        contentsOfFile: sandbox.state.value + "/consumer-marker", encoding: .utf8)
+        == "xx")
+    for path in h.outside { #expect(try String(contentsOf: path, encoding: .utf8) == "sentinel") }
+    try await h.base.requireNoScratch()
+    #expect(!FileManager.default.fileExists(atPath: scratch + "/consumer-marker"))
+    try #require(h.network).requireNoTraffic()
+  }
+
+  private func revocation(_ h: FormatterHarness) async throws {
+    try h.setMode("hold")
+    let name = try #require(
+      try h.tools().first {
+        $0.meta?.objectValue?["cli"]?.objectValue?["command"] == .string("format")
+      }?.name)
+    let task = Task { try await h.call("format", [:]) }
+    defer { task.cancel() }
+    let ready = h.worktree.appendingPathComponent("ready")
+    let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+    while !FileManager.default.fileExists(atPath: ready.path), ContinuousClock.now < deadline {
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    try #require(FileManager.default.fileExists(atPath: ready.path))
+    let service = h.gateway.permissionRuntime.service
+    let view = try service.view(owner: h.owner)
+    let approval = try #require(view.providers.first { $0.identity == .package("swift-format") })
+    _ = try service.revokeProvider(
+      approval.identity, owner: h.owner, expectedProviderRevision: approval.revision,
+      expectedRevision: view.revision)
+    try await h.gateway.permissionRuntime.coordinator.reconcile()
+    _ = await task.result
+    let retired = h.base.observations.ownerships
+    for ownership in retired {
+      try #require(try await ownership.members().isEmpty)
+    }
+    let before = h.base.observations.members.count
+    do {
+      _ = try await h.gateway.callToolAsync(
+        name: name, arguments: .object([:]), context: .empty)
+      Issue.record("A revoked provider dispatched another command")
+    } catch {
+      let reason = String(describing: error).lowercased()
+      #expect(
+        reason.contains("approval") || reason.contains("binding")
+          || reason.contains("permission") || reason.contains("disabled")
+          || reason.contains("unknowntool"))
+    }
+    #expect(h.base.observations.members.count == before)
+    try h.setMode("normal")
+    try fixtureApprovePlugin(
+      h.package, database: h.base.database, runtime: h.gateway.permissionRuntime,
+      permissions: fixturePermissions([.project("fixture"): .granted(.write)]))
+    try await h.gateway.refreshTools(context: .empty)
+    #expect(try await h.call("format", [:]).objectValue?["isError"] == .bool(false))
+    for ownership in retired { #expect(try await ownership.members().isEmpty) }
+  }
+
+  private func native(_ h: FormatterHarness) async throws {
+    let input = h.worktree.appendingPathComponent("Input.swift")
+    for command in ["root", "format"] {
+      try Data("let value=1\n".utf8).write(to: input)
+      let result = try formatterResult(
+        try await h.call(
+          command,
+          [
+            "paths": .array([.string("Input.swift")]), "in_place": .bool(true),
+            "configuration": .string("{}"), "color_diagnostics": .bool(false),
+          ]))
+      #expect(result["exit_code"] == .integer(0))
+      #expect(result["timed_out"] == .bool(false))
+      #expect(try String(contentsOf: input, encoding: .utf8) == "let value = 1\n")
+    }
+    let lint = try formatterResult(
+      try await h.call(
+        "lint",
+        [
+          "paths": .array([.string("-")]), "source": .string("let value=1\n"),
+          "strict": .bool(true), "configuration": .string("{}"), "color_diagnostics": .bool(false),
+        ]))
+    #expect(lint["exit_code"] == .integer(1))
+    #expect(lint["stderr"]?.objectValue?["data"]?.stringValue?.contains("[Spacing]") == true)
+    let help = try formatterResult(try await h.call("help", [:]))
+    #expect(help["exit_code"] == .integer(0))
+    #expect(help["stdout"]?.objectValue?["data"]?.stringValue?.contains("USAGE:") == true)
+    let configuration = try formatterResult(try await h.call("dump_configuration", [:]))
+    #expect(configuration["exit_code"] == .integer(0))
+    let json = try #require(configuration["stdout"]?.objectValue?["data"]?.stringValue)
+    #expect(try JSONSerialization.jsonObject(with: Data(json.utf8)) is [String: Any])
+    let unformatted = Data("let value=1\n".utf8)
+    let formatted = Data("let value = 1\n".utf8)
+    for path in h.outside { try unformatted.write(to: path) }
+    let evidence = URL(
+      fileURLWithPath: try #require(
+        ProcessInfo.processInfo.environment["COMPUTER_MCP_FORMATTER_EVIDENCE"])
+    )
+    .deletingLastPathComponent().appendingPathComponent("native-outside-observations.json")
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    var observations: [JSONValue] = []
+    func digest(_ data: Data) -> String {
+      SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+    func snapshot(_ response: JSONValue) -> JSONValue {
+      let outer = response.objectValue ?? [:]
+      let structured = outer["structuredContent"]?.objectValue ?? [:]
+      let process = structured["result"]?.objectValue ?? [:]
+      var fields: [String: JSONValue] = [
+        "is_error": outer["isError"] ?? .null,
+        "host_error": structured["error"] ?? .null,
+        "process_error": process["error"] ?? .null,
+      ]
+      for key in ["exit_code", "signal", "timed_out", "cancelled"] {
+        fields[key] = process[key] ?? .null
+      }
+      for name in ["stdout", "stderr"] {
+        let stream = process[name]?.objectValue ?? [:]
+        let text = stream["data"]?.stringValue ?? ""
+        fields[name] = .object([
+          "text": .string(String(text.prefix(2_048))),
+          "observation_truncated": .bool(text.count > 2_048),
+          "capture_truncated": stream["truncated"] ?? .null,
+          "capture_encoding": stream["encoding"] ?? .null,
+        ])
+      }
+      return .object(fields)
+    }
+    let paths = h.outside + [h.worktree.appendingPathComponent("escape.swift")]
+    let roles = ["source-main", "other-worktree", "host-data", "foreign-container", "symlink"]
+    for (index, path) in paths.enumerated() {
+      let role = roles[index]
+      let followSymlinks = role == "symlink"
+      // The pinned iterator silently skips files whose metadata it cannot read.
+      // Those native skips are not write attempts; the deterministic peer proves write denial.
+      let expectsMetadataSkip = role == "other-worktree" || role == "foreign-container"
+      let controlDirectory = h.worktree.appendingPathComponent("native-control-\(index)")
+      try FileManager.default.createDirectory(
+        at: controlDirectory, withIntermediateDirectories: false)
+      let control = controlDirectory.appendingPathComponent(path.lastPathComponent)
+      let controlTarget =
+        followSymlinks
+        ? controlDirectory.appendingPathComponent("followed-target.swift") : control
+      try unformatted.write(to: controlTarget)
+      if followSymlinks {
+        try FileManager.default.createSymbolicLink(at: control, withDestinationURL: controlTarget)
+      }
+      func arguments(_ target: URL) -> [String: JSONValue] {
+        var arguments: [String: JSONValue] = [
+          "paths": .array([.string(target.path)]), "in_place": .bool(true),
+          "configuration": .string("{}"), "color_diagnostics": .bool(false),
+        ]
+        if followSymlinks { arguments["follow_symlinks"] = .bool(true) }
+        return arguments
+      }
+      let controlResponse = try await h.call("format", arguments(control))
+      let controlAfter = try Data(contentsOf: control)
+      let before = try Data(contentsOf: path)
+      let result = try await h.call("format", arguments(path))
+      let after = try Data(contentsOf: path)
+      let observation = JSONValue.object([
+        "role": .string(role), "path": .string(path.path),
+        "expected_behavior": .string(expectsMetadataSkip ? "metadata-skip" : "write-denied"),
+        "follow_symlinks": .bool(followSymlinks),
+        "control_path": .string(control.path), "control_target_path": .string(controlTarget.path),
+        "control_input_sha256": .string(digest(unformatted)),
+        "control_after_sha256": .string(digest(controlAfter)),
+        "control_formatted": .bool(controlAfter == formatted),
+        "control_response": snapshot(controlResponse),
+        "before_sha256": .string(digest(before)),
+        "after_sha256": .string(digest(after)),
+        "unchanged": .bool(after == before), "response": snapshot(result),
+      ])
+      observations.append(observation)
+      try encoder.encode(observations).write(to: evidence, options: .atomic)
+      let diagnostic = String(decoding: try encoder.encode(observation), as: UTF8.self)
+      print("Native outside-path observation: \(diagnostic)")
+      #expect(controlResponse.objectValue?["isError"] == .bool(false), "\(diagnostic)")
+      #expect(
+        controlAfter == formatted,
+        "Matching filename must format inside the worktree: \(diagnostic)")
+      #expect(try Data(contentsOf: controlTarget) == formatted, "\(diagnostic)")
+      if followSymlinks {
+        let destination = try FileManager.default.destinationOfSymbolicLink(atPath: control.path)
+        #expect(
+          URL(fileURLWithPath: destination).resolvingSymlinksInPath().standardizedFileURL
+            == controlTarget.resolvingSymlinksInPath().standardizedFileURL, "\(diagnostic)")
+      }
+      #expect(before == unformatted, "\(diagnostic)")
+      let process = try formatterResult(result)
+      #expect(
+        result.objectValue?["structuredContent"]?.objectValue?["error"] == nil, "\(diagnostic)")
+      #expect(process["error"] == nil, "\(diagnostic)")
+      #expect(process["signal"] == .null, "\(diagnostic)")
+      #expect(process["timed_out"] == .bool(false), "\(diagnostic)")
+      #expect(process["cancelled"] == .bool(false), "\(diagnostic)")
+      #expect(process["stdout"]?.objectValue?["data"] == .string(""), "\(diagnostic)")
+      for stream in ["stdout", "stderr"] {
+        #expect(process[stream]?.objectValue?["truncated"] == .bool(false), "\(diagnostic)")
+      }
+      if expectsMetadataSkip {
+        #expect(result.objectValue?["isError"] == .bool(false), "\(diagnostic)")
+        #expect(process["exit_code"] == .integer(0), "\(diagnostic)")
+        #expect(process["stderr"]?.objectValue?["data"] == .string(""), "\(diagnostic)")
+      } else {
+        #expect(result.objectValue?["isError"] == .bool(true), "\(diagnostic)")
+        #expect(process["exit_code"] == .integer(1), "\(diagnostic)")
+        #expect(
+          process["stderr"]?.objectValue?["data"]?.stringValue?.contains("permission to save")
+            == true,
+          "\(diagnostic)")
+      }
+      #expect(after == before, "\(diagnostic)")
+    }
+    for path in h.outside { #expect(try Data(contentsOf: path) == unformatted) }
+    #expect(try String(contentsOf: input, encoding: .utf8) == "let value = 1\n")
+  }
+}
+
+private func formatterDigest(_ path: URL) throws -> String {
+  SHA256.hash(data: try Data(contentsOf: path)).map { String(format: "%02x", $0) }.joined()
+}
+
+private func formatterResult(_ value: JSONValue) throws -> [String: JSONValue] {
+  try #require(value.objectValue?["structuredContent"]?.objectValue?["result"]?.objectValue)
+}
+
+private func formatterPhase<Result>(
+  _ name: String, _ operation: () async throws -> Result
+) async rethrows -> Result {
+  let start = ContinuousClock.now
+  FileHandle.standardOutput.write(Data("Formatter phase \(name) started\n".utf8))
+  defer {
+    let elapsed = start.duration(to: .now)
+    FileHandle.standardOutput.write(Data("Formatter phase \(name) ended after \(elapsed)\n".utf8))
+  }
+  return try await operation()
+}
+
+private func withFormatterHarness(
+  _ package: PluginPackage, phase: String, outsideTargets: Bool = false, executable: URL? = nil,
+  callerWrite: Bool = true, providerWrite: Bool = true, pluginUse: Bool = true,
+  approved: Bool = true, operation: (FormatterHarness) async throws -> Void
+) async throws {
+  let h = try await formatterPhase("\(phase) setup") {
+    try await FormatterHarness.make(
+      package, outsideTargets: outsideTargets, executable: executable, callerWrite: callerWrite,
+      providerWrite: providerWrite, pluginUse: pluginUse, approved: approved)
+  }
+  // Join cleanup even when the test task has already been cancelled.
+  func close() async throws {
+    try await formatterPhase("\(phase) cleanup") {
+      try await Task { try await h.close() }.value
+    }
+  }
+  do {
+    try await formatterPhase("\(phase) execution") { try await operation(h) }
+  } catch {
+    do { try await close() } catch { Issue.record("Consumer cleanup failed: \(error)") }
+    throw error
+  }
+  try await close()
+}
+
+private final class FormatterHarness: @unchecked Sendable {
+  let base: FixedHostFixture
+  let lifecycle: GatewayStandaloneGenerations
+  let gateway: GatewayRuntime
+  let owner: GatewayPermissionOwner
+  let package: PluginPackage
+  let worktree: URL
+  let projects: [String]
+  let worktreePaths: [URL]
+  let outside: [URL]
+  let network: FormatterLoopback?
+
+  init(
+    base: FixedHostFixture, lifecycle: GatewayStandaloneGenerations, gateway: GatewayRuntime,
+    owner: GatewayPermissionOwner,
+    package: PluginPackage, worktree: URL, projects: [String], worktreePaths: [URL], outside: [URL],
+    network: FormatterLoopback?
+  ) {
+    self.base = base
+    self.lifecycle = lifecycle
+    self.gateway = gateway
+    self.owner = owner
+    self.package = package
+    self.worktree = worktree
+    self.projects = projects
+    self.worktreePaths = worktreePaths
+    self.outside = outside
+    self.network = network
+  }
+
+  static func make(
+    _ package: PluginPackage, outsideTargets: Bool, executable: URL?, callerWrite: Bool,
+    providerWrite: Bool, pluginUse: Bool, approved: Bool
+  ) async throws -> FormatterHarness {
+    let base = try FixedHostFixture(fullAccess: false, lifecycle: true)
+    let lifecycle = GatewayStandaloneGenerations(base.runtime)
+    print("Swift Format consumer fixture root: \(base.root.path)")
+    var projects: [String] = []
+    var paths: [URL] = []
+    var pendingGateway: GatewayRuntime?
+    var pendingNetwork: FormatterLoopback?
+    do {
+      try await base.initializeRepository()
+      for name in outsideTargets ? ["formatter", "sibling"] : ["formatter"] {
+        let response = try await lifecycle.callToolForMCPAsync(
+          name: "git.worktree_add", arguments: .object(["name": .string(name)]),
+          context: .init(session: base.session))
+        try #require(
+          response.objectValue?["isError"] != .bool(true),
+          "Host worktree creation failed: \(response)")
+        let result = try formatterResult(response)
+        projects.append(try #require(result["project_id"]?.stringValue))
+        paths.append(URL(fileURLWithPath: try #require(result["path"]?.stringValue)))
+      }
+      var outside: [URL] = []
+      if outsideTargets {
+        let foreign = try base.database.prepareProviderContainer(.package("foreign"))
+        let foreignSandbox = try foreign.sandbox
+        outside = [
+          base.project.appendingPathComponent("outside.swift"),
+          paths[1].appendingPathComponent("outside.swift"),
+          base.root.appendingPathComponent("host-secret"),
+          URL(fileURLWithPath: foreignSandbox.state.value).appendingPathComponent("outside.swift"),
+        ]
+        for path in outside { try Data("sentinel".utf8).write(to: path) }
+        try FileManager.default.createSymbolicLink(
+          at: paths[0].appendingPathComponent("escape.swift"), withDestinationURL: outside[0])
+      }
+      // Only the deterministic boundary peer sends network traffic.
+      let network = try outsideTargets && executable == nil ? FormatterLoopback() : nil
+      pendingNetwork = network
+      let command =
+        try executable
+        ?? compileFormatterPeer(
+          package: package, root: base.root, outside: outside, port: network?.port ?? 0)
+
+      let plugin = try PluginResolver.resolve(
+        package: package, source: .init(kind: .development, root: package.root),
+        settings: .init(
+          enabled: true, cli: ["format": .init(registrationID: "formatter-consumer")]),
+        dependencyExecutables: ["formatter": command],
+        hostVersion: PluginVersion(ComputerMCPCLI.version), architecture: PluginHost.architecture)
+      try #require(plugin.diagnostics.isEmpty && plugin.cliCommands.count == 1)
+      let consumerProfileID = try #require(GatewayProfileID(rawValue: "formatter-consumer"))
+      let lifecycleProfile = try #require(
+        base.database.profiles().first { $0.id == base.configuration.runtime.profileID })
+      try #require(consumerProfileID != lifecycleProfile.id && consumerProfileID != .localAdmin)
+      var permissions = fixturePermissions([
+        .project("fixture"): .granted(callerWrite ? .write : .read),
+        // Host catalog metadata needs Machine information independently of native CLI access.
+        .machineInformation: .granted(.access),
+      ])
+      if pluginUse { try permissions.set(.granted(.use), for: .plugin("swift-format")) }
+      let consumerProfile = ProfileGrant(
+        id: consumerProfileID, permissions: permissions, allowedCallers: [.localCLI])
+      let configuration = GatewayConfiguration(
+        runtime: .init(caller: .localCLI, profileID: consumerProfileID),
+        profiles: base.configuration.profiles + [.init(grant: consumerProfile)])
+      try base.database.saveProfile(consumerProfile)
+      let gateway = try GatewayRuntime(
+        configuration: configuration,
+        context: .init(
+          caller: .localCLI, profileID: consumerProfileID, projectID: projects[0],
+          trustedPrincipalID: "formatter-consumer"),
+        database: base.database, registeredProjects: base.database.projects(),
+        platform: base.platform, plugins: [plugin])
+      pendingGateway = gateway
+      _ = try gateway.makeControlSession()
+      let retainedLifecycleProfile = try #require(
+        base.database.profiles().first { $0.id == lifecycleProfile.id })
+      try #require(retainedLifecycleProfile == lifecycleProfile)
+      let owner = try GatewayPermissionOwner(
+        context: .init(
+          caller: .localApp, profileID: .localAdmin, trustedPrincipalID: "formatter-test-owner"),
+        validate: {})
+      let h = FormatterHarness(
+        base: base, lifecycle: lifecycle, gateway: gateway, owner: owner, package: package,
+        worktree: paths[0],
+        projects: projects, worktreePaths: paths, outside: outside, network: network)
+      if approved {
+        try fixtureApprovePlugin(
+          package, database: base.database, runtime: gateway.permissionRuntime,
+          permissions: fixturePermissions([
+            .project("fixture"): .granted(providerWrite ? .write : .read)
+          ]))
+        let view = try gateway.permissionRuntime.service.view(owner: owner)
+        let current = try #require(view.providers.first { $0.identity == .package("swift-format") })
+        #expect(current.enabled && current.fullAccessConsent == nil)
+      }
+      return h
+    } catch {
+      do {
+        try await cleanupFormatterFixture(
+          base, lifecycle: lifecycle, gateway: pendingGateway, network: pendingNetwork,
+          projects: projects, paths: paths)
+      } catch {
+        Issue.record("Consumer setup cleanup failed; retain its root: \(base.root): \(error)")
+      }
+      throw error
+    }
+  }
+
+  func tools() throws -> [MCPTool] {
+    try gateway.listTools(context: .empty).filter {
+      $0.meta?.objectValue?["cli"]?.objectValue?["registration"] == .string("formatter-consumer")
+    }
+  }
+
+  func call(_ command: String, _ arguments: [String: JSONValue]) async throws -> JSONValue {
+    let tool = try #require(
+      try tools().first {
+        $0.meta?.objectValue?["cli"]?.objectValue?["command"] == .string(command)
+      })
+    return try await gateway.callToolAsync(
+      name: tool.name, arguments: .object(arguments), context: .empty)
+  }
+
+  func setMode(_ mode: String) throws {
+    try Data(mode.utf8).write(to: worktree.appendingPathComponent("probe-mode"), options: .atomic)
+  }
+
+  func close() async throws {
+    try await cleanupFormatterFixture(
+      base, lifecycle: lifecycle, gateway: gateway, network: network, projects: projects,
+      paths: worktreePaths)
+  }
+}
+
+private func cleanupFormatterFixture(
+  _ base: FixedHostFixture, lifecycle: GatewayStandaloneGenerations, gateway: GatewayRuntime?,
+  network: FormatterLoopback?,
+  projects: [String], paths: [URL]
+) async throws {
+  await gateway?.shutdown()
+  network?.close()
+  for ownership in base.observations.ownerships {
+    try #require(try await ownership.members().isEmpty)
+  }
+  do {
+    for project in projects.reversed() {
+      let result = try await lifecycle.callToolForMCPAsync(
+        name: "git.worktree_remove",
+        arguments: .object(["project_id": .string(project), "force": .bool(true)]),
+        context: .init(session: base.session))
+      try #require(
+        result.objectValue?["isError"] != .bool(true), "Host worktree removal failed: \(result)")
+    }
+    for path in paths where path != base.project {
+      try #require(!FileManager.default.fileExists(atPath: path.path))
+    }
+    try await base.requireNoScratch()
+  } catch {
+    await lifecycle.shutdown()
+    base.session.end()
+    throw error
+  }
+  await lifecycle.shutdown()
+  base.session.end()
+  for ownership in base.observations.ownerships {
+    try #require(try await ownership.members().isEmpty)
+  }
+  try FileManager.default.removeItem(at: base.root)
+}
+
+private func compileFormatterPeer(
+  package: PluginPackage, root: URL, outside: [URL], port: UInt16
+) throws -> URL {
+  let native = try Data(
+    contentsOf: package.root.appendingPathComponent(
+      "Tests/ExportSwiftFormatTreeTests/Fixtures/native-help.json"))
+  let bytes = native.map(String.init).joined(separator: ",")
+  let encoder = JSONEncoder()
+  encoder.outputFormatting = [.withoutEscapingSlashes]
+  let paths = try (outside.map(\.path) + ["escape.swift"]).map { path in
+    String(decoding: try encoder.encode(path), as: UTF8.self)
+  }.joined(separator: ",")
+  let source = root.appendingPathComponent("formatter-peer.c")
+  try """
+  #include <arpa/inet.h>
+  #include <fcntl.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <sys/socket.h>
+  #include <sys/time.h>
+  #include <unistd.h>
+  static const unsigned char native[] = {\(bytes)};
+  static int marker(const char *directory, const char *name) {
+    char path[8192];
+    if (!directory) return -1;
+    snprintf(path, sizeof(path), "%s/%s", directory, name);
+    int fd = open(path, O_CREAT | O_WRONLY | O_APPEND, 0600);
+    if (fd < 0) return -1;
+    int ok = write(fd, "x", 1) == 1; close(fd); return ok ? 0 : -1;
+  }
+  static int network_denied(int type) {
+    int fd = socket(AF_INET, type, 0);
+    if (fd < 0) return 1;
+    struct sockaddr_in address = {.sin_len = sizeof(address), .sin_family = AF_INET,
+      .sin_port = htons(\(port)), .sin_addr.s_addr = htonl(INADDR_LOOPBACK)};
+    struct timeval timeout = {.tv_sec = 1};
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    int result = connect(fd, (struct sockaddr *)&address, sizeof(address));
+    if (!result && type == SOCK_DGRAM) result = send(fd, "x", 1, 0) < 0 ? -1 : 0;
+    close(fd); return result < 0;
+  }
+  int main(int argc, char **argv) {
+    char mode[64] = "normal";
+    FILE *control = fopen("probe-mode", "r");
+    if (control) { if (!fgets(mode, sizeof(mode), control)) return 90; fclose(control); }
+    if (argc == 2 && !strcmp(argv[1], "--version")) {
+      if (marker(getenv("HOME"), "version-check")) return 91;
+      puts(!strcmp(mode, "bad-version") ? "incompatible" : "6.3.1"); return 0;
+    }
+    if (argc == 2 && !strcmp(argv[1], "--experimental-dump-help")) {
+      if (marker(getenv("HOME"), "export-check")) return 92;
+      fwrite(native, 1, sizeof(native), stdout);
+      if (!strcmp(mode, "bad-export")) putchar(' ');
+      return 0;
+    }
+    if (marker(".", "target-dispatched")) return 93;
+    if (!strcmp(mode, "hold")) {
+      if (marker(".", "ready")) return 94;
+      for (;;) pause();
+    }
+    if (!strcmp(mode, "boundaries")) {
+      const char *outside[] = {\(paths)};
+      for (size_t i = 0; i < sizeof(outside) / sizeof(outside[0]); i++) {
+        int fd = open(outside[i], O_RDWR | O_APPEND);
+        if (fd >= 0) { write(fd, "escaped", 7); close(fd); return 95; }
+      }
+      const char *variables[] = {"HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "TMPDIR"};
+      for (size_t i = 0; i < sizeof(variables) / sizeof(variables[0]); i++) {
+        if (marker(getenv(variables[i]), "consumer-marker")) return 96;
+      }
+      if (!network_denied(SOCK_STREAM) || !network_denied(SOCK_DGRAM)) return 97;
+      char cwd[8192];
+      if (!getcwd(cwd, sizeof(cwd))) return 98;
+      printf("{\\"cwd\\":\\"%s\\",\\"home\\":\\"%s\\",\\"cache\\":\\"%s\\",\\"state\\":\\"%s\\",\\"scratch\\":\\"%s\\"}\\n",
+        cwd, getenv("HOME"), getenv("XDG_CACHE_HOME"), getenv("XDG_STATE_HOME"), getenv("TMPDIR"));
+      return 0;
+    }
+    puts("{}"); return 0;
+  }
+  """.write(to: source, atomically: true, encoding: .utf8)
+  let binary = root.appendingPathComponent("formatter-peer")
+  let process = Process()
+  process.executableURL = URL(fileURLWithPath: "/usr/bin/cc")
+  process.arguments = ["-Wall", "-Werror", source.path, "-o", binary.path]
+  try process.run()
+  process.waitUntilExit()
+  try #require(process.terminationStatus == 0)
+  return binary
+}
+
+private final class FormatterLoopback: @unchecked Sendable {
+  let port: UInt16
+  private var descriptors: [Int32]
+
+  init() throws {
+    let tcp = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+    try #require(tcp >= 0)
+    var held = [tcp]
+    do {
+      var address = sockaddr_in(
+        sin_len: UInt8(MemoryLayout<sockaddr_in>.size), sin_family: sa_family_t(AF_INET),
+        sin_port: 0, sin_addr: in_addr(s_addr: INADDR_LOOPBACK.bigEndian),
+        sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+      try Self.bind(tcp, address: &address)
+      var size = socklen_t(MemoryLayout<sockaddr_in>.size)
+      let queried = withUnsafeMutablePointer(to: &address) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(tcp, $0, &size) }
+      }
+      try #require(queried == 0 && listen(tcp, 2) == 0)
+      let udp = Darwin.socket(AF_INET, SOCK_DGRAM, 0)
+      try #require(udp >= 0)
+      held.append(udp)
+      try Self.bind(udp, address: &address)
+      port = UInt16(bigEndian: address.sin_port)
+      descriptors = held
+      // Prove both endpoints work before a sandbox denial is accepted as evidence.
+      for (server, kind) in [(tcp, SOCK_STREAM), (udp, SOCK_DGRAM)] {
+        let client = Darwin.socket(AF_INET, kind, 0)
+        try #require(client >= 0)
+        defer { Darwin.close(client) }
+        let connected = withUnsafePointer(to: &address) {
+          $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            connect(client, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+          }
+        }
+        try #require(connected == 0)
+        var byte: UInt8 = 1
+        try #require(send(client, &byte, 1, 0) == 1)
+        var item = pollfd(fd: server, events: Int16(POLLIN), revents: 0)
+        try #require(poll(&item, 1, 1_000) == 1)
+        if kind == SOCK_STREAM {
+          let accepted = accept(server, nil, nil)
+          try #require(accepted >= 0)
+          Darwin.close(accepted)
+        } else {
+          try #require(recv(server, &byte, 1, 0) == 1)
+        }
+      }
+    } catch {
+      for descriptor in held { Darwin.close(descriptor) }
+      throw error
+    }
+  }
+
+  private static func bind(_ descriptor: Int32, address: inout sockaddr_in) throws {
+    let result = withUnsafePointer(to: &address) {
+      $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+        Darwin.bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+      }
+    }
+    try #require(result == 0)
+  }
+
+  func requireNoTraffic() throws {
+    for descriptor in descriptors {
+      var item = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+      #expect(poll(&item, 1, 50) == 0)
+    }
+  }
+
+  deinit { close() }
+
+  func close() {
+    for descriptor in descriptors { Darwin.close(descriptor) }
+    descriptors.removeAll()
+  }
+}

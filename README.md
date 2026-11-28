@@ -64,11 +64,18 @@ The result carries the real stdout, stderr, exit status and timeout information.
 2. Install the archive through the host's plugin management UI or CLI.
 3. In the plugin's settings, bind the `formatter` dependency to the actual `swift-format` from
    Swift 6.3.1 and verify its `--version`.
-4. Enable the `format` CLI contribution. The tools run inside a project and need Full Shell
-   permission.
+4. Review and approve the plugin’s Project write declaration in the host, select its allowed
+   projects, and enable the `format` CLI contribution. The calling client also needs Plugin use
+   and Project write for the selected project. Installation grants no access.
 
 Disabling or removing the plugin revokes its contribution, not the external formatter. Host
-overrides and the dependency binding belong to Computer MCP.
+overrides and the dependency binding belong to Computer MCP. The host runs commands in the
+selected project worktree with a private plugin container and scratch storage. This plugin
+declares no network access or existing-user-configuration read exceptions.
+
+Every native CLI path needs Project write, including lint, help, configuration output and help
+flags. The host’s `cli.help` operation reads catalog metadata without running the formatter.
+Executable compatibility checks run only after admission; they do not grant permission.
 
 ## Usage
 
